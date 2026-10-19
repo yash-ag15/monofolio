@@ -2,23 +2,21 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { COLOR_KEYS, DEFAULT_DESIGN, SECTION_LABELS, useStore, withFreshLook } from '../store.jsx';
 import { Icon, Seg, Switch, downloadFile, useToast } from '../components/ui.jsx';
 import { CURSORS, FONT_PAIRS, SCENES, THEMES, THEME_CATEGORIES, hashString, renderPortfolio, scenePoster, signatureSvg, slugName } from '../portfolio/render.js';
-import { BRIEF_EXAMPLES, fingerprint, generateVariation, interpretBrief, uniquenessScore } from '../portfolio/brief.js';
+import { fingerprint, uniquenessScore } from '../portfolio/brief.js';
 import ColorsPanel from './ColorsPanel.jsx';
 import CodePanel from './CodePanel.jsx';
+import { replayEdits } from '../lib/ai-builder.js';
 import HistoryBar from '../components/HistoryBar.jsx';
-import InspirePanel from './InspirePanel.jsx';
 import { Pressable, Thumb } from '../components/Thumb.jsx';
 
 const TOOLS = [
   { id: 'themes', label: 'Themes', icon: 'grid' },
-  { id: 'inspire', label: 'Inspire', icon: 'image' },
-  { id: 'brief', label: 'Brief', icon: 'wand' },
+  { id: 'layout', label: 'Layout', icon: 'layout' },
   { id: 'colors', label: 'Colours', icon: 'palette' },
   { id: 'style', label: 'Type', icon: 'type' },
   { id: 'motion', label: 'Motion', icon: 'zap' },
   { id: 'three', label: '3D', icon: 'cube' },
-  { id: 'layout', label: 'Layout', icon: 'layout' },
-  { id: 'code', label: 'Code', icon: 'code' },
+  { id: 'code', label: 'AI', icon: 'sparkle' },
   { id: 'publish', label: 'Publish', icon: 'rocket' },
 ];
 
@@ -140,14 +138,14 @@ export default function Studio() {
   const { profile, design } = state;
   const [tab, setTab] = useState(() => {
     const t = new URLSearchParams(window.location.hash.split('?')[1] || '').get('tab');
+    if (t === 'inspire' || t === 'brief') return 'code'; // merged into the AI tab
     return TOOLS.some((x) => x.id === t) ? t : 'themes';
   });
   const [cat, setCat] = useState('All');
   const [keepColors, setKeepColors] = useState(false);
   const [device, setDevice] = useState('desktop');
   const [full, setFull] = useState(() => new URLSearchParams(window.location.hash.split('?')[1] || '').get('full') === '1');
-  const [notes, setNotes] = useState([]);
-  const [varSeed, setVarSeed] = useState(() => Math.floor(Math.random() * 1e6));
+  const [codeFull, setCodeFull] = useState(false); // code editor + live preview filling the screen
   const [dragKey, setDragKey] = useState(null);
   const [replay, setReplay] = useState(0);
 
@@ -157,7 +155,10 @@ export default function Studio() {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') setFull(false);
+      if (e.key === 'Escape') {
+        setFull(false);
+        setCodeFull(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -176,8 +177,25 @@ export default function Studio() {
   // what the edited code was copied from: the design AND the profile content
   const designFp = `${fp}:${hashString(JSON.stringify(profile))}`;
   const generatedFull = useMemo(() => (tab === 'code' ? renderPortfolio(profile, design) : ''), [tab, profile, design]);
+
+  // An AI-changed theme stays connected to the settings: when colours, 3D, fonts, theme or content
+  // change, rebuild the theme and re-apply the AI's edits on top — code, preview and export all update.
+  const synced = useCode && code.base === 'theme' && (code.patches || []).length > 0;
+  useEffect(() => {
+    if (!synced) return;
+    const t = setTimeout(() => {
+      const r = replayEdits(renderPortfolio(profile, design), code.patches);
+      if (r.html !== code.html || r.failed !== (code.syncFailed || 0)) dispatch({ type: 'code/set', patch: { html: r.html, syncFailed: r.failed } });
+    }, 250);
+    return () => clearTimeout(t);
+  }, [synced, profile, design, code.patches]); // eslint-disable-line react-hooks/exhaustive-deps
   // the final page that Open / Export / Copy use
-  const finalHtml = () => (useCode ? code.html : renderPortfolio(profile, design));
+  // (an AI-changed theme is rebuilt on the spot, so an export right after a settings change is never stale)
+  const finalHtml = () => {
+    if (!useCode) return renderPortfolio(profile, design);
+    if (code.base === 'theme' && (code.patches || []).length) return replayEdits(renderPortfolio(profile, design), code.patches).html;
+    return code.html;
+  };
   // in the preview, keep in-page links working and open external links in a new tab
   const PREVIEW_JS = "<script>document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a');if(!a)return;var h=a.getAttribute('href')||'';e.preventDefault();if(h.charAt(0)==='#'){var t=document.getElementById(h.slice(1));if(t)t.scrollIntoView({behavior:'smooth'})}else if(h)window.open(a.href,'_blank','noopener')});<\/script>";
   const previewHtml = useCode ? (code.html.lastIndexOf('</body>') >= 0 ? code.html.slice(0, code.html.lastIndexOf('</body>')) + PREVIEW_JS + code.html.slice(code.html.lastIndexOf('</body>')) : code.html + PREVIEW_JS) : html;
@@ -195,38 +213,11 @@ export default function Studio() {
     [profile, keepColors, design.accent, design.colorScheme, design.colors, design.accentUse]
   );
 
-  const variations = useMemo(
-    () => [0, 1, 2, 3].map((i) => generateVariation(design, varSeed + i * 7919)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [varSeed]
-  );
-
-  // ---- inspiration
-  const insp = state.inspiration || [];
-  const traits = insp[0]?.traits?.layout ? insp[0].traits : null;
 
   const applyTheme = (key) => {
     snapshot();
     dispatch({ type: 'design/replace', design: themeDesign(key), label: `Theme: ${THEMES[key].name}` });
     toast(`${THEMES[key].name} applied${keepColors ? ' with your colours' : ''} — make it yours with Colours, Type and Motion`);
-  };
-
-  const applyVariation = (v) => {
-    snapshot();
-    dispatch({ type: 'design/replace', design: v, label: 'Remix' });
-    toast('Remix applied');
-  };
-
-  const applyBrief = () => {
-    const { patch, notes: n } = interpretBrief(design.brief, design);
-    if (!n.length) {
-      setNotes(['No design keywords recognised yet — try “3D”, “terminal”, “newspaper”, “neon”, “animated”, “letters”, “stars background”, “projects first”, “hide education”…']);
-      return;
-    }
-    snapshot();
-    set(patch);
-    setNotes(n);
-    toast(`Applied ${n.length} design decision${n.length > 1 ? 's' : ''}`);
   };
 
   const exportHtml = () => {
@@ -271,7 +262,7 @@ export default function Studio() {
 
   return (
     <div className="page page-wide">
-      <div className={`studio ${full ? 'is-full' : ''} ${tab === 'code' ? 'code-mode' : ''}`}>
+      <div className={`studio ${full ? 'is-full' : ''} ${tab === 'code' ? 'code-mode' : ''} ${tab === 'code' && codeFull ? 'code-full' : ''}`}>
         <nav className="rail" aria-label="Studio tools">
           {TOOLS.map((t) => (
             <button key={t.id} className={`rail-btn ${tab === t.id ? 'on' : ''}`} onClick={() => setTab(t.id)} aria-current={tab === t.id}>
@@ -307,8 +298,40 @@ export default function Studio() {
             </div>
           </div>
 
+          {useCode && tab !== 'code' && tab !== 'publish' && (
+            <div className={`sync-note ${synced && !code.syncFailed ? 'ok' : 'warn'}`}>
+              <Icon name={synced && !code.syncFailed ? 'check' : 'alert'} />
+              {synced ? (
+                code.syncFailed ? (
+                  <span>
+                    <b>{code.syncFailed} AI change{code.syncFailed > 1 ? 's' : ''} didn’t fit this setting</b> (e.g. a very different theme). The rest are kept. Press Ctrl+Z to go back, or ask the AI again.
+                  </span>
+                ) : (
+                  <span>
+                    <b>Your AI changes are kept.</b> Anything you change here updates your code, the preview and the exported index.html.
+                  </span>
+                )
+              ) : (
+                <span>
+                  <b>These settings don’t change your current code.</b> The preview shows your {code.base === 'ai' ? 'AI-written' : 'hand-edited'} page.{' '}
+                  <button className="linklike" onClick={() => dispatch({ type: 'code/set', patch: { active: false } })}>
+                    Use the theme design instead
+                  </button>{' '}
+                  (your code stays saved in the AI tab), or ask the AI for the change.
+                </span>
+              )}
+            </div>
+          )}
           {tab === 'themes' && (
             <div className="panel-body">
+              <button className="ai-theme-cta" onClick={() => setTab('code')}>
+                <Icon name="sparkle" />
+                <span>
+                  <b>Change {THEMES[design.layout]?.name || 'this theme'} with AI</b>
+                  <small>Pick a theme below, then describe what to change — colours, layout, sections, animations…</small>
+                </span>
+                <Icon name="chevron" />
+              </button>
               <div className="effect-list">
                 <div className="effect">
                   <div>
@@ -341,77 +364,9 @@ export default function Studio() {
             </div>
           )}
 
-          {tab === 'inspire' && <InspirePanel profile={profile} design={design} set={set} snapshot={snapshot} toast={toast} dispatch={dispatch} insp={insp} />}
+          {tab === 'colors' && <ColorsPanel design={design} set={set} snapshot={snapshot} traits={null} toast={toast} />}
 
-          {tab === 'brief' && (
-            <div className="panel-body">
-              <Ctl label="Describe the portfolio you want, in your own words">
-                <div className="brief-box">
-                  <textarea
-                    className="textarea"
-                    value={design.brief}
-                    onChange={(e) => set({ brief: e.target.value })}
-                    placeholder="e.g. Neon cyberpunk with animated letters, stars background, projects first, hide certifications, a touch of #ff5500…"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) applyBrief();
-                    }}
-                  />
-                  <div className="brief-foot">
-                    <span className="small muted">Ctrl + Enter</span>
-                    <span className="spacer" />
-                    <button className="btn sm" onClick={applyBrief}>
-                      <Icon name="wand" /> Apply brief
-                    </button>
-                  </div>
-                </div>
-              </Ctl>
-              {notes.length > 0 && (
-                <Ctl label="What we understood">
-                  <ul className="notes">
-                    {notes.map((n, i) => (
-                      <li key={i}>{n}</li>
-                    ))}
-                  </ul>
-                </Ctl>
-              )}
-              <Ctl label="Start from an example">
-                <div className="chips">
-                  {BRIEF_EXAMPLES.map((ex) => (
-                    <button key={ex} className="chip" onClick={() => set({ brief: ex })} title={ex}>
-                      {ex.split(',')[0]}
-                    </button>
-                  ))}
-                </div>
-              </Ctl>
-              <Ctl
-                label="Remix — four random directions"
-                aside={
-                  <button className="btn ghost sm" onClick={() => setVarSeed(Math.floor(Math.random() * 1e6))}>
-                    <Icon name="shuffle" /> Shuffle
-                  </button>
-                }
-              >
-                <div className="theme-grid">
-                  {variations.map((v, i) => (
-                    <Pressable key={`${varSeed}-${i}`} className="theme-card" onActivate={() => applyVariation(v)} label={`Apply ${THEMES[v.layout].name} remix`}>
-                      <Thumb html={renderPortfolio(profile, v, { thumb: true })} scale={0.135} height={118} eager />
-                      <div className="theme-meta">
-                        <b>{THEMES[v.layout].name}</b>
-                        <span>
-                          {FONT_PAIRS[v.fontPair]?.head} · {v.mode} · {v.entrance}
-                          {v.hero3d !== 'none' ? ` · ${SCENES[v.hero3d].name}` : ''}
-                        </span>
-                      </div>
-                    </Pressable>
-                  ))}
-                </div>
-              </Ctl>
-            </div>
-          )}
-
-          {tab === 'colors' && <ColorsPanel design={design} set={set} snapshot={snapshot} traits={traits} toast={toast} />}
-
-          {tab === 'code' && <CodePanel generated={generatedFull} code={code} designFp={designFp} dispatch={dispatch} toast={toast} />}
+          {tab === 'code' && <CodePanel generated={generatedFull} code={code} designFp={designFp} dispatch={dispatch} toast={toast} profile={profile} full={codeFull} onFull={setCodeFull} themeName={THEMES[design.layout]?.name} onDownload={exportHtml} />}
 
           {tab === 'style' && (
             <div className="panel-body">

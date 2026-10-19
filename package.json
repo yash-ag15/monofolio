@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server.js"
   },
   "dependencies": {
     "@codemirror/lang-html": "6.4.9",
@@ -17,6 +18,9 @@
     "codemirror": "6.0.1",
     "html-to-image": "1.11.11",
     "jspdf": "2.5.2",
+    "mammoth": "1.8.0",
+    "marked": "12.0.2",
+    "pdfjs-dist": "4.4.168",
     "qrcode": "1.5.4",
     "react": "18.3.1",
     "react-dom": "18.3.1"

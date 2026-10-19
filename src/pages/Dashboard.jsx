@@ -5,7 +5,7 @@ import { uniquenessScore } from '../portfolio/brief.js';
 
 const TOOL_TEXT = {
   profile: 'Everything about you in one place — the source for every other tool.',
-  studio: 'Design a portfolio that looks like nobody else’s. Brief, remix, fine-tune, export.',
+  studio: 'Design a portfolio that looks like nobody else’s. Describe it or show an image — AI builds it — then fine-tune and export.',
   github: 'Import repositories and keep project stars in sync.',
   resume: 'ATS-friendly résumés and CVs generated from your identity.',
   tailor: 'Match your résumé to a job description, keyword by keyword.',

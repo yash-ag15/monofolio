@@ -6,6 +6,10 @@ import Profile from './pages/Profile.jsx';
 import Studio from './pages/Studio.jsx';
 import GitHubSync from './pages/GitHubSync.jsx';
 import ComingSoon from './pages/ComingSoon.jsx';
+import Resume from './pages/Resume.jsx';
+import Ats from './pages/Ats.jsx';
+import Tailor from './pages/Tailor.jsx';
+import Readme from './pages/Readme.jsx';
 import { useAutoSync } from './lib/github.js';
 import { NAV } from './nav.js';
 
@@ -41,6 +45,18 @@ export default function App() {
       break;
     case 'github':
       page = <GitHubSync go={go} />;
+      break;
+    case 'resume':
+      page = <Resume go={go} />;
+      break;
+    case 'ats':
+      page = <Ats go={go} />;
+      break;
+    case 'tailor':
+      page = <Tailor go={go} />;
+      break;
+    case 'readme':
+      page = <Readme go={go} />;
       break;
     case 'dashboard':
       page = <Dashboard go={go} />;

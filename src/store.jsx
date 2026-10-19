@@ -233,6 +233,10 @@ const initialState = () => ({
   // Live code editor: html = your edited copy of the portfolio, active = use it instead of the generated page,
   // fp = fingerprint of the design it was copied from (to warn when the design changes later)
   code: { html: '', active: false, fp: '' },
+  resumes: [],
+  activeResume: '',
+  // GitHub profile README builder: chosen template, options, and the markdown if edited by hand
+  readme: { template: 'classic', opts: {}, md: '', edited: false },
   appTheme: 'dark',
 });
 
@@ -251,6 +255,9 @@ function load() {
       appTheme: saved.appThemeChosen ? saved.appTheme : 'dark',
       inspiration: saved.inspiration || [],
       code: { ...base.code, ...saved.code },
+      resumes: saved.resumes || [],
+      activeResume: saved.activeResume || '',
+      readme: { ...base.readme, ...saved.readme },
     };
   } catch {
     return initialState();
@@ -357,6 +364,12 @@ function reducer(state, action) {
       return { ...state, coverLetters: action.items };
     case 'theme/toggle':
       return { ...state, appTheme: state.appTheme === 'light' ? 'dark' : 'light', appThemeChosen: true };
+    case 'readme/set':
+      return { ...state, readme: { ...(state.readme || {}), ...action.patch } };
+    case 'resumes/set':
+      return { ...state, resumes: action.items, activeResume: action.active ?? state.activeResume };
+    case 'resume/update':
+      return { ...state, resumes: (state.resumes || []).map((r) => (r.id === action.id ? { ...r, ...action.patch, updated: Date.now() } : r)) };
     case 'code/set':
       return { ...state, code: { ...(state.code || {}), ...action.patch } };
     case 'inspiration/set':
