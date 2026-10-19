@@ -10,6 +10,8 @@ import Resume from './pages/Resume.jsx';
 import Ats from './pages/Ats.jsx';
 import Tailor from './pages/Tailor.jsx';
 import Readme from './pages/Readme.jsx';
+import Cover from './pages/Cover.jsx';
+import Card from './pages/Card.jsx';
 import { useAutoSync } from './lib/github.js';
 import { NAV } from './nav.js';
 
@@ -57,6 +59,12 @@ export default function App() {
       break;
     case 'readme':
       page = <Readme go={go} />;
+      break;
+    case 'cover':
+      page = <Cover go={go} />;
+      break;
+    case 'card':
+      page = <Card go={go} />;
       break;
     case 'dashboard':
       page = <Dashboard go={go} />;

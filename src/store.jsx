@@ -237,6 +237,8 @@ const initialState = () => ({
   activeResume: '',
   // GitHub profile README builder: chosen template, options, and the markdown if edited by hand
   readme: { template: 'classic', opts: {}, md: '', edited: false },
+  // Dev profile card: design, size and options
+  card: { design: 'minimal', size: 'card', opts: {} },
   appTheme: 'dark',
 });
 
@@ -258,6 +260,7 @@ function load() {
       resumes: saved.resumes || [],
       activeResume: saved.activeResume || '',
       readme: { ...base.readme, ...saved.readme },
+      card: { ...base.card, ...saved.card },
     };
   } catch {
     return initialState();
@@ -364,6 +367,8 @@ function reducer(state, action) {
       return { ...state, coverLetters: action.items };
     case 'theme/toggle':
       return { ...state, appTheme: state.appTheme === 'light' ? 'dark' : 'light', appThemeChosen: true };
+    case 'card/set':
+      return { ...state, card: { ...(state.card || {}), ...action.patch } };
     case 'readme/set':
       return { ...state, readme: { ...(state.readme || {}), ...action.patch } };
     case 'resumes/set':

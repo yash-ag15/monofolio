@@ -18,9 +18,8 @@ export const NAV = [
       { id: 'ats', label: 'ATS Checker', icon: 'check' },
       { id: 'tailor', label: 'Resume Tailoring', icon: 'target' },
       { id: 'readme', label: 'GitHub README', icon: 'github' },
-      { id: 'cover', label: 'Cover Letters', icon: 'mail', soon: true },
-      { id: 'card', label: 'Dev Profile Card', icon: 'card', soon: true },
-      { id: 'roast', label: 'Portfolio Roast', icon: 'flame', soon: true },
+      { id: 'cover', label: 'Cover Letters', icon: 'mail' },
+      { id: 'card', label: 'Dev Profile Card', icon: 'card' },
     ],
   },
 ];

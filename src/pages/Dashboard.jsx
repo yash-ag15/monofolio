@@ -12,7 +12,6 @@ const TOOL_TEXT = {
   ats: 'Check formatting, keywords and readability like an ATS would.',
   cover: 'Personalised cover letters from your projects and the job post.',
   card: 'Shareable developer cards as PNG or PDF.',
-  roast: 'Honest feedback on design, content, accessibility and recruiter appeal.',
 };
 
 function completeness(p) {
