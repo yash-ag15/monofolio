@@ -4,7 +4,7 @@
 // so it must not reference anything outside its own body.
 
 // ---------------------------------------------------------------- 3D (Three.js)
-export function threeRuntime(THREE, cfg, loadGLTF) {
+export function threeRuntime(THREE, cfg, loadGLTF, loadText) {
   var el = document.querySelector('[data-three]');
   if (!el) return;
   var fgStr = (getComputedStyle(document.documentElement).getPropertyValue('--fg') || '#111111').trim();
@@ -205,6 +205,205 @@ export function threeRuntime(THREE, cfg, loadGLTF) {
         r.rotation.y = t * r.userData.ay;
       });
     };
+  } else if (kind === 'tunnel') {
+    // flying through a tunnel of rings
+    baseDist = 1.2;
+    var tRings = [];
+    var TN = 30, TGAP = 0.9;
+    for (var ti = 0; ti < TN; ti++) {
+      var tr = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.012, 6, 72), new THREE.MeshBasicMaterial({ color: FG, transparent: true }));
+      tRings.push(tr);
+      group.add(tr);
+    }
+    var twist = 0.1 + rnd() * 0.15;
+    tick = function (t) {
+      tRings.forEach(function (r, i) {
+        var z = ((t * 2.2 + i * TGAP) % (TN * TGAP)) - (TN * TGAP - 1.5);
+        r.position.z = z;
+        r.position.x = Math.sin(z * 0.25 + t * 0.5) * 0.4;
+        r.position.y = Math.cos(z * 0.2 + t * 0.4) * 0.3;
+        r.rotation.z = i * twist + t * 0.2;
+        r.material.opacity = Math.max(0, Math.min(1, 1 + z / (TN * TGAP * 0.7)));
+      });
+    };
+  } else if (kind === 'helix') {
+    // DNA double helix
+    var hx = new THREE.Group();
+    group.add(hx);
+    var HN = 56;
+    var dot = new THREE.InstancedMesh(new THREE.SphereGeometry(0.065, 12, 12), new THREE.MeshBasicMaterial({ color: FG }), HN * 2);
+    var dummy = new THREE.Object3D();
+    var rungPts = [];
+    var turn = 0.28 + rnd() * 0.12;
+    for (var hi = 0; hi < HN; hi++) {
+      var ha = hi * turn, hy = (hi - HN / 2) * 0.058;
+      var p1 = new THREE.Vector3(Math.cos(ha) * 1.05, hy, Math.sin(ha) * 1.05);
+      var p2 = new THREE.Vector3(-p1.x, hy, -p1.z);
+      dummy.position.copy(p1);
+      dummy.updateMatrix();
+      dot.setMatrixAt(hi * 2, dummy.matrix);
+      dummy.position.copy(p2);
+      dummy.updateMatrix();
+      dot.setMatrixAt(hi * 2 + 1, dummy.matrix);
+      if (hi % 2 === 0) rungPts.push(p1, p2);
+    }
+    hx.add(dot);
+    hx.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(rungPts), lineMat(0.35)));
+    hx.rotation.z = 0.25;
+    tick = function (t) {
+      hx.rotation.y = t * 0.6;
+    };
+  } else if (kind === 'voxels') {
+    // a city / equaliser of cubes
+    addLights();
+    var VS = 13, VG = 0.24;
+    var vox = new THREE.InstancedMesh(new THREE.BoxGeometry(0.24, 1, 0.24), solidMat(), VS * VS);
+    var vd = new THREE.Object3D();
+    var vHolder = new THREE.Group();
+    vHolder.rotation.set(0.6, 0.78, 0);
+    vHolder.add(vox);
+    group.add(vHolder);
+    var vf = 0.4 + rnd() * 0.4;
+    tick = function (t) {
+      for (var x = 0; x < VS; x++) {
+        for (var z = 0; z < VS; z++) {
+          var hgt = 0.15 + (Math.sin(x * vf + t * 1.6) + Math.cos(z * vf * 1.2 + t * 1.1) + 2) * 0.45;
+          vd.position.set((x - VS / 2) * VG, hgt / 2 - 1, (z - VS / 2) * VG);
+          vd.scale.set(1, hgt, 1);
+          vd.updateMatrix();
+          vox.setMatrixAt(x * VS + z, vd.matrix);
+        }
+      }
+      vox.instanceMatrix.needsUpdate = true;
+    };
+  } else if (kind === 'ribbon') {
+    // flowing silk ribbons made of lines
+    var RL = 14, RS = 160;
+    var ribbons = [];
+    for (var ri = 0; ri < RL; ri++) {
+      var rg = new THREE.BufferGeometry();
+      rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(RS * 3), 3));
+      var rline = new THREE.Line(rg, lineMat(0.15 + (ri / RL) * 0.7));
+      group.add(rline);
+      ribbons.push(rg);
+    }
+    var rf = 0.6 + rnd() * 0.5;
+    tick = function (t) {
+      ribbons.forEach(function (g, k) {
+        var a = g.attributes.position.array;
+        for (var i = 0; i < RS; i++) {
+          var x = (i / (RS - 1)) * 6 - 3;
+          a[i * 3] = x;
+          a[i * 3 + 1] = Math.sin(x * rf + t + k * 0.18) * 0.7 + (k - RL / 2) * 0.05;
+          a[i * 3 + 2] = Math.cos(x * rf * 0.7 + t * 0.7 + k * 0.12) * 0.9;
+        }
+        g.attributes.position.needsUpdate = true;
+      });
+    };
+  } else if (kind === 'plexus') {
+    // a network of nodes that link up when close
+    var PN = 90, PR = 2.4, MAXL = 700;
+    var nodes = [];
+    for (var pi = 0; pi < PN; pi++) {
+      var v = new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize().multiplyScalar(PR * Math.cbrt(rnd()));
+      nodes.push({ p: v, v: new THREE.Vector3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).multiplyScalar(0.006) });
+    }
+    var npos = new Float32Array(PN * 3);
+    var ngeo = new THREE.BufferGeometry();
+    ngeo.setAttribute('position', new THREE.BufferAttribute(npos, 3));
+    group.add(new THREE.Points(ngeo, new THREE.PointsMaterial({ color: FG, size: 0.07 })));
+    var lpos = new Float32Array(MAXL * 6);
+    var lgeo = new THREE.BufferGeometry();
+    lgeo.setAttribute('position', new THREE.BufferAttribute(lpos, 3));
+    group.add(new THREE.LineSegments(lgeo, lineMat(0.28)));
+    tick = function () {
+      nodes.forEach(function (n, i) {
+        n.p.add(n.v);
+        if (n.p.length() > PR) n.v.negate();
+        npos[i * 3] = n.p.x;
+        npos[i * 3 + 1] = n.p.y;
+        npos[i * 3 + 2] = n.p.z;
+      });
+      var c = 0;
+      for (var i = 0; i < PN && c < MAXL; i++) {
+        for (var j = i + 1; j < PN && c < MAXL; j++) {
+          if (nodes[i].p.distanceTo(nodes[j].p) < 0.95) {
+            lpos.set([nodes[i].p.x, nodes[i].p.y, nodes[i].p.z, nodes[j].p.x, nodes[j].p.y, nodes[j].p.z], c * 6);
+            c++;
+          }
+        }
+      }
+      lgeo.setDrawRange(0, c * 2);
+      lgeo.attributes.position.needsUpdate = true;
+      ngeo.attributes.position.needsUpdate = true;
+    };
+  } else if (kind === 'galaxy') {
+    // a spiral galaxy of points
+    var GN = 7000, arms = 3 + Math.floor(rnd() * 3);
+    var gpos = new Float32Array(GN * 3);
+    for (var gi = 0; gi < GN; gi++) {
+      var gr = Math.pow(rnd(), 1.4) * 2.4;
+      var ga = ((gi % arms) / arms) * Math.PI * 2 + gr * 1.3;
+      var sc = (1 - gr / 2.6) * 0.3 + 0.05;
+      gpos[gi * 3] = Math.cos(ga) * gr + (rnd() - 0.5) * sc * 2;
+      gpos[gi * 3 + 1] = (rnd() - 0.5) * sc * 0.8;
+      gpos[gi * 3 + 2] = Math.sin(ga) * gr + (rnd() - 0.5) * sc * 2;
+    }
+    var gg = new THREE.BufferGeometry();
+    gg.setAttribute('position', new THREE.BufferAttribute(gpos, 3));
+    var gHolder = new THREE.Group();
+    gHolder.rotation.x = 0.95;
+    gHolder.add(new THREE.Points(gg, new THREE.PointsMaterial({ color: FG, size: 0.018, transparent: true, opacity: 0.85, depthWrite: false })));
+    group.add(gHolder);
+    tick = function (t) {
+      gHolder.rotation.y = t * 0.08;
+    };
+  } else if (kind === 'mobius') {
+    // a Möbius strip in wireframe
+    var MU = 140, MV = 10, mverts = [], midx = [];
+    for (var mu = 0; mu <= MU; mu++) {
+      for (var mv = 0; mv <= MV; mv++) {
+        var u = (mu / MU) * Math.PI * 2, w = (mv / MV - 0.5) * 1.1;
+        mverts.push((1 + (w / 2) * Math.cos(u / 2)) * Math.cos(u) * 1.7, (1 + (w / 2) * Math.cos(u / 2)) * Math.sin(u) * 1.7, (w / 2) * Math.sin(u / 2) * 1.7);
+        if (mu < MU && mv < MV) {
+          var a0 = mu * (MV + 1) + mv;
+          midx.push(a0, a0 + MV + 1, a0 + 1, a0 + 1, a0 + MV + 1, a0 + MV + 2);
+        }
+      }
+    }
+    var mg = new THREE.BufferGeometry();
+    mg.setAttribute('position', new THREE.Float32BufferAttribute(mverts, 3));
+    mg.setIndex(midx);
+    var mobius = new THREE.Mesh(mg, new THREE.MeshBasicMaterial({ color: FG, wireframe: true, transparent: true, opacity: 0.45 }));
+    group.add(mobius);
+    tick = function (t) {
+      mobius.rotation.z = t * 0.25;
+      mobius.rotation.x = 0.6 + Math.sin(t * 0.3) * 0.2;
+    };
+  } else if (kind === 'name3d') {
+    // your initials / first name as real extruded 3D lettering
+    addLights();
+    loadText()
+      .then(function (mods) {
+        new mods[0].FontLoader().load(cfg.fontUrl, function (font) {
+          var tg = new mods[1].TextGeometry(cfg.text || 'Hi', { font: font, size: 1, height: 0.38, depth: 0.38, curveSegments: 8, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.03, bevelSegments: 4 });
+          tg.computeBoundingBox();
+          tg.center();
+          var wdt = tg.boundingBox.max.x - tg.boundingBox.min.x || 1;
+          var c = FG.clone();
+          if (lightMode) c.lerp(new THREE.Color('#ffffff'), 0.12);
+          var word = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ color: c, roughness: 0.28, metalness: lightMode ? 0.45 : 0.25 }));
+          word.scale.setScalar(Math.min(1.5, 4.8 / wdt));
+          group.add(word);
+          tick = function (t) {
+            word.rotation.y = Math.sin(t * 0.6) * 0.45;
+            word.rotation.x = Math.sin(t * 0.4) * 0.12;
+          };
+        });
+      })
+      .catch(function () {
+        el.classList.add('model-error');
+      });
   } else if (kind === 'model') {
     addLights();
     loadGLTF()
@@ -258,16 +457,50 @@ export function threeRuntime(THREE, cfg, loadGLTF) {
       visible = es[0].isIntersecting;
     }).observe(el);
   }
-  var flat = kind === 'terrain';
+  // drag to rotate (only where the 3D isn't sitting behind text)
+  var dragX = 0, dragY = 0, dragging = false, lastX = 0, lastY = 0;
+  if (cfg.drag) {
+    el.style.pointerEvents = 'auto';
+    el.style.cursor = 'grab';
+    el.style.touchAction = 'pan-y';
+    el.addEventListener('pointerdown', function (e) {
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      el.style.cursor = 'grabbing';
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', function (e) {
+      if (!dragging) return;
+      dragY += (e.clientX - lastX) * 0.01;
+      dragX += (e.clientY - lastY) * 0.01;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    });
+    var stop = function () {
+      dragging = false;
+      el.style.cursor = 'grab';
+    };
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointercancel', stop);
+  }
+
+  var flat = kind === 'terrain' || kind === 'tunnel';
+  var speed = cfg.speed || 1;
   var start = performance.now();
   function frame(now) {
     requestAnimationFrame(frame);
     if (!visible) return;
-    var t = reduce ? 0 : (now - start) / 1000;
+    var t = reduce ? 0 : ((now - start) / 1000) * speed;
     mx += (tx - mx) * 0.05;
     my += (ty - my) * 0.05;
-    group.rotation.y = mx * (flat ? 0.25 : 0.9) + (flat ? 0 : t * 0.1);
-    group.rotation.x = my * (flat ? 0.1 : 0.5) + (flat ? 0 : window.scrollY * 0.0006);
+    if (cfg.drag) {
+      group.rotation.y = dragY + (dragging || flat ? 0 : t * 0.1);
+      group.rotation.x = dragX;
+    } else {
+      group.rotation.y = mx * (flat ? 0.25 : 0.9) + (flat ? 0 : t * 0.1);
+      group.rotation.x = my * (flat ? 0.1 : 0.5) + (flat ? 0 : window.scrollY * 0.0006);
+    }
     if (tick) tick(t);
     renderer.render(scene, camera);
   }
@@ -325,8 +558,45 @@ export function effectsRuntime(cfg) {
     });
   }
 
-  // cursor
-  if (cfg.cursor && cfg.cursor !== 'none' && fine) {
+  // cursors that keep the normal pointer visible: a comet trail, or a soft spotlight
+  if ((cfg.cursor === 'trail' || cfg.cursor === 'spotlight') && fine && !reduce) {
+    if (cfg.cursor === 'spotlight') {
+      var spot = document.createElement('div');
+      spot.className = 'c-spot';
+      document.body.appendChild(spot);
+      window.addEventListener('pointermove', function (e) {
+        spot.style.setProperty('--sx', e.clientX + 'px');
+        spot.style.setProperty('--sy', e.clientY + 'px');
+      }, { passive: true });
+    } else {
+      var trail = [];
+      for (var ti = 0; ti < 14; ti++) {
+        var td = document.createElement('div');
+        td.className = 'c-trail';
+        td.style.opacity = String(1 - ti / 14);
+        td.style.transform = 'translate(-100px,-100px) scale(' + (1 - ti / 18) + ')';
+        document.body.appendChild(td);
+        trail.push({ el: td, x: -100, y: -100 });
+      }
+      var hx = -100, hy = -100;
+      window.addEventListener('pointermove', function (e) {
+        hx = e.clientX;
+        hy = e.clientY;
+      }, { passive: true });
+      var follow = function () {
+        var px = hx, py = hy;
+        trail.forEach(function (p, i) {
+          p.x += (px - p.x) * 0.45;
+          p.y += (py - p.y) * 0.45;
+          p.el.style.transform = 'translate(' + p.x + 'px,' + p.y + 'px) scale(' + (1 - i / 18) + ')';
+          px = p.x;
+          py = p.y;
+        });
+        requestAnimationFrame(follow);
+      };
+      follow();
+    }
+  } else if (cfg.cursor && cfg.cursor !== 'none' && fine) {
     root.classList.add('has-cursor', 'cursor-' + cfg.cursor);
     var x = -200, y = -200, rx = -200, ry = -200;
     var dot = document.createElement('div');

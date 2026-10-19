@@ -2,7 +2,7 @@
 // it scans the user's own words for intent and maps them to concrete design tokens,
 // returning both the changes and a human-readable explanation of each decision.
 
-import { SECTION_KEYS } from '../store.jsx';
+import { SECTION_KEYS, withFreshLook } from '../store.jsx';
 import { FONT_PAIRS, THEMES, hashString, mulberry32 } from './render.js';
 import { parseColorText } from '../lib/color.js';
 
@@ -60,13 +60,28 @@ const RULES = [
   { words: ['gameboy', 'game boy', 'handheld', 'lcd'], set: theme('handheld'), theme: 'handheld', why: 'Handheld → retro desktop on a grey LCD' },
   { words: ['dashboard', 'analytics', 'console look', 'stats'], set: theme('dashboard'), theme: 'dashboard', why: 'Dashboard → data console with counting stats' },
   { words: ['manifesto', 'statement first', 'big statement'], set: theme('manifesto'), theme: 'manifesto', why: 'Manifesto → your tagline as a giant statement' },
+  { words: ['spotify', 'music player', 'now playing', 'playlist', 'tracklist', 'album'], set: theme('nowplaying'), theme: 'nowplaying', why: 'Now Playing → music-player hero, projects as a tracklist' },
+  { words: ['boarding pass', 'ticket', 'airline', 'flight ticket', 'travel'], set: theme('ticket'), theme: 'ticket', why: 'Boarding Pass → ticket hero with perforation and barcode' },
+  { words: ['chat', 'messenger', 'whatsapp', 'imessage', 'conversation', 'chat bubbles'], set: theme('chat'), theme: 'chat', why: 'Messenger → your portfolio as a chat conversation' },
+  { words: ['notion', 'docs page', 'notes app', 'wiki page', 'knowledge base'], set: theme('notion'), theme: 'notion', why: 'Docs Page → notes-app page with properties and callouts' },
+  { words: ['wikipedia', 'encyclopedia', 'article', 'infobox'], set: theme('wiki'), theme: 'wiki', why: 'Encyclopedia → article with an infobox and [edit] links' },
+  { words: ['film credits', 'movie credits', 'end credits', 'letterbox', 'credits roll'], set: theme('credits'), theme: 'credits', why: 'Film Credits → letterboxed, centred credit roll' },
+  { words: ['kanban', 'trello', 'board columns', 'project board', 'jira'], set: theme('kanban'), theme: 'kanban', why: 'Kanban Board → sections as columns of cards' },
+  { words: ['neumorphism', 'neumorphic', 'soft ui', 'soft shadows', 'embossed'], set: theme('neumorph'), theme: 'neumorph', why: 'Soft UI → neumorphic, softly extruded surfaces' },
+  { words: ['paper layers', 'papercut', 'paper cut', 'stacked paper', 'layered'], set: theme('papercut'), theme: 'papercut', why: 'Paper Layers → stacked outlined sheets' },
+  { words: ['y2k', 'glitch', 'chrome text', '2000s', 'millennium'], set: theme('glitch'), theme: 'glitch', why: 'Y2K Glitch → chrome glitching type and synth grid' },
+  { words: ['topographic', 'contour', 'map', 'cartography', 'hiking', 'outdoors'], set: theme('topo'), theme: 'topo', why: 'Topographic → contour-map background and legend panels' },
+  { words: ['mondrian', 'de stijl', 'color blocks', 'colour blocks', 'modern art'], set: theme('mondrian'), theme: 'mondrian', why: 'Mondrian → thick black grid with colour blocks' },
+  { words: ['departure board', 'split flap', 'split-flap', 'airport', 'train station'], set: theme('departures'), theme: 'departures', why: 'Departure Board → split-flap letters, projects as flights' },
+  { words: ['comic', 'comic book', 'superhero', 'manga', 'cartoon', 'speech bubble'], set: theme('comic'), theme: 'comic', why: 'Comic Book → inked panels, caption boxes, speech bubble' },
+  { words: ['saas', 'landing page', 'product launch', 'vercel', 'linear', 'startup landing'], set: theme('launch'), theme: 'launch', why: 'Launch Page → glowing centred hero and gradient cards' },
   { words: ['minimal', 'minimalist', 'clean', 'simple', 'calm', 'quiet', 'understated'], set: { border: 'hairline', density: 'airy', texture: 'none', grain: false }, why: 'Minimal / clean → hairlines and generous whitespace' },
 
   // ---- animation ----
   { words: ['animated', 'animation', 'animations', 'motion', 'dynamic', 'alive'], set: { motion: 'subtle', entrance: 'rise', revealStyle: 'rise', cardHover: 'lift', linkStyle: 'slide' }, why: 'Animated → hero entrance, scroll reveals with stagger, hover lifts' },
   { words: ['smooth', 'buttery', 'fluid motion'], set: { entrance: 'rise', revealStyle: 'rise', cardHover: 'lift', parallax: true }, why: 'Smooth → rising entrance, staggered reveals, parallax hero' },
   { words: ['cinematic', 'dramatic', 'movie'], set: { entrance: 'mask', revealStyle: 'blur', grain: true, preloader: true }, why: 'Cinematic → mask-wipe entrance, blur reveals, grain, preloader' },
-  { words: ['letter animation', 'split text', 'letters', 'text animation', 'animated text', 'animated name'], set: { entrance: 'split', titleAnim: 'letters' }, why: 'Text animation → name and titles animate letter by letter' },
+  { words: ['letter animation', 'letter animations', 'letters animation', 'letter by letter', 'split text', 'letters', 'text animation', 'text animations', 'animated text', 'animated name'], set: { entrance: 'split', titleAnim: 'letters' }, why: 'Text animation → name and titles animate letter by letter' },
   { words: ['typing effect', 'typed', 'typing animation', 'typewriter effect'], set: { entrance: 'typewriter' }, why: 'Your name types itself out' },
   { words: ['stars background', 'starry', 'starfield', 'warp'], set: { bgAnim: 'stars' }, why: 'Animated starfield background' },
   { words: ['matrix background', 'code rain background', 'falling code'], set: { bgAnim: 'matrix' }, why: 'Falling glyph rain background' },
@@ -75,6 +90,23 @@ const RULES = [
   { words: ['interactive dots', 'dot background', 'dots background', 'reactive background'], set: { bgAnim: 'dots' }, why: 'Dot grid that reacts to the cursor' },
   { words: ['waves background', 'flowing lines', 'wave lines'], set: { bgAnim: 'waves' }, why: 'Flowing wave lines in the background' },
   { words: ['parallax'], set: { parallax: true }, why: 'Parallax hero on scroll' },
+  { words: ['wave text', 'wavy', 'bouncy letters', 'bounce'], set: { entrance: 'wave', titleAnim: 'wave' }, why: 'Letters bounce in like a wave' },
+  { words: ['flip animation', 'flip in', '3d flip'], set: { entrance: 'flip', revealStyle: 'flip' }, why: 'Elements flip up in 3D' },
+  { words: ['curtain', 'curtain reveal', 'reveal intro'], set: { entrance: 'curtain' }, why: 'A curtain lifts to reveal the page' },
+  { words: ['zoom in', 'zoom effect', 'zoom animation'], set: { entrance: 'zoom', revealStyle: 'zoom' }, why: 'Zoom-out entrance and zoom reveals' },
+  { words: ['skew', 'skewed'], set: { revealStyle: 'skew', scrollSkew: true }, why: 'Skew reveals and scroll skew' },
+  { words: ['marker', 'highlighted titles', 'highlighter'], set: { titleAnim: 'highlight' }, why: 'Titles get a marker highlight' },
+  { words: ['constellation', 'connected dots', 'stars connected'], set: { bgAnim: 'constellation' }, why: 'Constellation background that reaches for your cursor' },
+  { words: ['rain', 'rainy', 'storm'], set: { bgAnim: 'rain' }, why: 'Rain background' },
+  { words: ['bubbles', 'underwater', 'floating circles'], set: { bgAnim: 'bubbles' }, why: 'Rising bubbles background' },
+  { words: ['flow field', 'currents', 'particle flow'], set: { bgAnim: 'flow' }, why: 'Flow-field particle background' },
+  { words: ['text fill', 'words light up', 'scroll text', 'reading effect'], set: { textFill: true }, why: 'Paragraphs fill in word by word on scroll' },
+  { words: ['ripple', 'click ripple', 'water ripple'], set: { clickFx: 'ripple' }, why: 'Ripple on every click' },
+  { words: ['burst', 'confetti', 'click burst', 'sparks'], set: { clickFx: 'burst' }, why: 'Particle burst on every click' },
+  { words: ['cursor trail', 'comet', 'mouse trail'], set: { cursor: 'trail' }, why: 'Comet-trail cursor' },
+  { words: ['spotlight cursor', 'flashlight', 'torch'], set: { cursor: 'spotlight' }, why: 'A soft spotlight follows the cursor' },
+  { words: ['spotlight cards', 'glow cards', 'card glow'], set: { cardHover: 'spotlight' }, why: 'Cards glow where the pointer is' },
+  { words: ['shine', 'shiny cards', 'sheen'], set: { cardHover: 'shine' }, why: 'A shine sweeps across cards on hover' },
   { words: ['counters', 'counting numbers', 'animated numbers'], set: { counters: true }, why: 'Numbers count up when visible' },
   { words: ['hover lift', 'lift cards', 'floating cards'], set: { cardHover: 'lift' }, why: 'Cards lift on hover' },
   { words: ['zoom images', 'image zoom', 'zoom on hover'], set: { cardHover: 'zoom' }, why: 'Project images zoom on hover' },
@@ -84,7 +116,7 @@ const RULES = [
   { words: ['playful', 'fun', 'quirky', 'creative', 'artsy', 'expressive'], set: { fontPair: 'syne', mark: 'orbit', motion: 'reveal', cursor: 'invert' }, why: 'Playful → expressive type, generative mark, inverting cursor' },
   { words: ['corporate', 'professional', 'formal', 'serious', 'enterprise', 'recruiter friendly'], set: { fontPair: 'plex', heroStyle: 'split', motion: 'subtle', sectionLabel: 'plain', cursor: 'none', grain: false }, why: 'Professional → engineered IBM Plex type, no gimmicks' },
   { words: ['retro', 'vintage', 'old school', '90s', 'typewriter'], set: { paper: 'warm', texture: 'lines' }, why: 'Retro → warm paper with ruled lines' },
-  { words: ['modern', 'sleek', 'startup', 'saas'], set: { fontPair: 'sora', radius: 14, motion: 'reveal' }, why: 'Modern / sleek → geometric type, rounded corners, scroll reveals' },
+  { words: ['modern', 'sleek', 'startup'], set: { fontPair: 'sora', radius: 14, motion: 'reveal' }, why: 'Modern / sleek → geometric type, rounded corners, scroll reveals' },
   { words: ['technical', 'engineer', 'engineering', 'systems', 'backend'], set: { fontPair: 'grotesk', sectionLabel: 'slash' }, why: 'Technical tone → Space Grotesk with // code-comment labels' },
   { words: ['film', 'cinematic', 'analog', 'gritty', 'grain', 'grainy', 'noise', 'texture overlay'], set: { grain: true }, why: 'Cinematic → animated film-grain overlay' },
 
@@ -96,13 +128,24 @@ const RULES = [
   { words: ['globe', 'planet', 'earth', 'world', 'global'], set: { hero3d: 'globe' }, why: '3D: dotted globe with orbit arcs' },
   { words: ['terrain', 'wave terrain', 'landscape', 'mountains'], set: { hero3d: 'terrain' }, why: '3D: undulating wave terrain' },
   { words: ['rings', 'gyroscope', 'orbit rings', 'atom'], set: { hero3d: 'rings' }, why: '3D: gyroscope rings' },
+  { words: ['3d name', 'name in 3d', '3d text', '3d letters', 'extruded'], set: { hero3d: 'name3d' }, why: '3D: your name as real extruded lettering' },
+  { words: ['tunnel', 'wormhole', 'warp tunnel', 'hyperspace'], set: { hero3d: 'tunnel' }, why: '3D: flying through a tunnel of rings' },
+  { words: ['dna', 'helix', 'double helix', 'biology'], set: { hero3d: 'helix' }, why: '3D: rotating DNA helix' },
+  { words: ['voxel', 'voxels', 'equalizer', 'equaliser', 'city blocks'], set: { hero3d: 'voxels' }, why: '3D: voxel city rising like an equaliser' },
+  { words: ['ribbon', 'ribbons', 'silk', 'flowing lines'], set: { hero3d: 'ribbon' }, why: '3D: flowing silk ribbons' },
+  { words: ['network', 'plexus', 'connections', 'nodes', 'neural'], set: { hero3d: 'plexus' }, why: '3D: drifting network of linked nodes' },
+  { words: ['galaxy', 'spiral galaxy', 'milky way', 'nebula'], set: { hero3d: 'galaxy' }, why: '3D: spiral galaxy' },
+  { words: ['mobius', 'möbius', 'infinite loop', 'infinity'], set: { hero3d: 'mobius' }, why: '3D: Möbius strip' },
+  { words: ['drag to rotate', 'rotatable', 'spin it', 'interactive 3d'], set: { drag3d: true }, why: 'Visitors can drag to rotate the 3D object' },
+  { words: ['fast 3d', 'fast spin', 'spinning fast'], set: { threeSpeed: 2 }, why: 'Faster 3D motion' },
+  { words: ['slow 3d', 'slow spin', 'gentle 3d'], set: { threeSpeed: 0.4 }, why: 'Slower, calmer 3D motion' },
   { words: ['spline'], set: { hero3d: 'embed' }, why: '3D: your own Spline scene (paste its URL in 3D & Motion)' },
   { words: ['my model', 'my 3d model', 'glb', 'gltf', 'own 3d'], set: { hero3d: 'model' }, why: '3D: your own model (upload a .glb in 3D & Motion)' },
   { words: ['no 3d', 'without 3d', 'flat design'], set: { hero3d: 'none' }, why: 'No 3D' },
   { words: ['3d background', 'background 3d', 'behind the text'], set: { hero3dPlace: 'background' }, why: '3D placed behind the hero text' },
 
   // ---- interactions ----
-  { words: ['custom cursor', 'cursor'], set: { cursor: 'dot' }, why: 'Custom dot + ring cursor' },
+  { words: ['custom cursor', 'cool cursor', 'fancy cursor'], set: { cursor: 'dot' }, why: 'Custom dot + ring cursor' },
   { words: ['invert cursor', 'blend cursor', 'inverting cursor'], set: { cursor: 'invert' }, why: 'Inverting blend-mode cursor' },
   { words: ['crosshair'], set: { cursor: 'crosshair' }, why: 'Crosshair cursor with live coordinates' },
   { words: ['tilt', '3d cards', 'parallax cards', 'hover effects'], set: { tilt: true }, why: '3D tilt on project cards' },
@@ -305,10 +348,10 @@ export function generateVariation(base, seed) {
     spatial: ['sora', 'unbounded', 'syne', 'tight'],
     classic: Object.keys(FONT_PAIRS).filter((k) => k !== 'pixel'),
   };
-  const scenes3d = ['particles', 'knot', 'shapes', 'blob', 'globe', 'terrain', 'rings'];
+  const scenes3d = ['particles', 'knot', 'shapes', 'blob', 'globe', 'terrain', 'rings', 'name3d', 'tunnel', 'helix', 'voxels', 'ribbon', 'plexus', 'galaxy', 'mobius'];
   const wants3d = kind === 'spatial' || rand() > 0.55;
-  return {
-    ...base,
+  // start from a clean look so nothing from the current design leaks into the remix
+  return withFreshLook(base, {
     ...preset,
     layout,
     fontPair: isSkin ? preset.fontPair : pick(rand, fontsFor[kind]),
@@ -318,12 +361,13 @@ export function generateVariation(base, seed) {
     sectionLabel: kind === 'terminal' ? 'prompt' : kind === 'blueprint' ? 'fig' : pick(rand, ['plain', 'numbered', 'slash', 'bracket', 'hash']),
     mark: pick(rand, ['none', 'identicon', 'monogram', 'lines', 'orbit']),
     hero3d: preset.hero3d && preset.hero3d !== 'none' ? preset.hero3d : wants3d && kind !== 'sidebar' ? pick(rand, scenes3d) : 'none',
-    entrance: preset.entrance || pick(rand, ['fade', 'rise', 'blur', 'scale', 'mask', 'split', 'typewriter']),
-    revealStyle: preset.revealStyle || pick(rand, ['fade', 'rise', 'scale', 'blur', 'slide', 'clip']),
-    titleAnim: pick(rand, ['none', 'none', 'letters', 'line', 'scramble']),
-    cardHover: preset.cardHover || pick(rand, ['none', 'lift', 'zoom', 'outline', 'invert']),
+    entrance: preset.entrance || pick(rand, ['fade', 'rise', 'blur', 'scale', 'mask', 'split', 'typewriter', 'wave', 'flip', 'slide', 'zoom', 'curtain']),
+    revealStyle: preset.revealStyle || pick(rand, ['fade', 'rise', 'scale', 'blur', 'slide', 'clip', 'flip', 'tilt', 'zoom', 'skew']),
+    titleAnim: pick(rand, ['none', 'none', 'letters', 'wave', 'line', 'highlight', 'blur', 'scramble']),
+    cardHover: preset.cardHover || pick(rand, ['none', 'lift', 'spotlight', 'shine', 'zoom', 'outline', 'invert']),
     linkStyle: pick(rand, ['underline', 'slide', 'highlight', 'arrow']),
-    bgAnim: preset.bgAnim || (rand() > 0.75 ? pick(rand, ['stars', 'gradient', 'grid', 'dots', 'waves']) : 'none'),
+    bgAnim: preset.bgAnim || (rand() > 0.7 ? pick(rand, ['stars', 'gradient', 'grid', 'dots', 'waves', 'constellation', 'rain', 'bubbles', 'flow']) : 'none'),
+    clickFx: rand() > 0.75 ? pick(rand, ['ripple', 'burst']) : 'none',
     parallax: rand() > 0.6,
     hero3dPlace: 'auto',
     cursor: pick(rand, ['none', 'none', 'dot', 'ring', 'invert']),
@@ -332,7 +376,7 @@ export function generateVariation(base, seed) {
     scramble: rand() > 0.5,
     grain: rand() > 0.7,
     seed: Math.floor(rand() * 100000),
-  };
+  });
 }
 
 // How different is this design from the stock default? Higher = more personal.

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon, Seg } from '../components/ui.jsx';
-import { PALETTES, contrast, ensureContrast, isHex, parseColorText, schemeFromPalette, schemesFromColor } from '../lib/color.js';
+import { PALETTES, contrast, ensureContrast, finalize, isHex, parseColorText, schemesFromColor } from '../lib/color.js';
 
 const EXAMPLES = ['deep navy with gold', 'soft pastel', 'dark forest green', 'earthy tones', 'bold coral background', 'black with lime', 'white and cobalt', 'dracula', 'warm cream and rust', 'midnight purple'];
 
@@ -72,7 +72,7 @@ export default function ColorsPanel({ design, set, snapshot, traits, toast }) {
     apply(r.colors);
     setNotes(r.notes);
   };
-  const imageScheme = traits ? schemeFromPalette(traits.palette, traits.color > 0.25 ? traits.accent : '') : null;
+  const imageScheme = traits?.bgColor ? finalize({ bg: traits.bgColor, fg: traits.fgColor, accent: traits.accentColor }) : null;
 
   return (
     <div className="panel-body">

@@ -21,6 +21,7 @@ export const FONT_PAIRS = {
 
 // Each theme is a different art direction with its own page structure.
 import { SKINS } from './skins.js';
+import { SKINS_2 } from './skins2.js';
 
 const BASE_THEMES = {
   classic: {
@@ -113,9 +114,9 @@ const BASE_THEMES = {
   },
 };
 
-export const THEMES = { ...BASE_THEMES, ...SKINS };
+export const THEMES = { ...BASE_THEMES, ...SKINS, ...SKINS_2 };
 
-export const THEME_CATEGORIES = ['All', 'Minimal', 'Bold', '3D', 'Technical', 'Retro', 'Editorial', 'Playful'];
+export const THEME_CATEGORIES = ['All', 'Minimal', 'Modern', 'Bold', '3D', 'Technical', 'Retro', 'Editorial', 'Playful'];
 
 export const LAYOUTS = Object.fromEntries(Object.entries(THEMES).map(([k, t]) => [k, `${t.name} — ${t.desc}`]));
 
@@ -128,6 +129,14 @@ export const SCENES = {
   globe: { name: 'Dot globe', desc: 'Dotted planet with orbit arcs' },
   terrain: { name: 'Wave terrain', desc: 'Undulating wireframe landscape' },
   rings: { name: 'Gyroscope', desc: 'Nested rings spinning on axes' },
+  name3d: { name: '3D Name', desc: 'Your name as real 3D lettering' },
+  tunnel: { name: 'Tunnel', desc: 'Fly through rings of light' },
+  helix: { name: 'DNA Helix', desc: 'A turning double helix' },
+  voxels: { name: 'Voxel City', desc: 'Cubes rising like an equaliser' },
+  ribbon: { name: 'Silk Ribbons', desc: 'Flowing waves of lines' },
+  plexus: { name: 'Network', desc: 'Nodes linking up as they drift' },
+  galaxy: { name: 'Spiral Galaxy', desc: 'Thousands of stars in arms' },
+  mobius: { name: 'Möbius Strip', desc: 'A one-sided wireframe loop' },
   model: { name: 'Your 3D model', desc: 'Upload a .glb / paste a URL' },
   embed: { name: 'Spline / embed', desc: 'Any Spline or Sketchfab scene' },
 };
@@ -138,4 +147,6 @@ export const CURSORS = {
   ring: 'Soft ring',
   invert: 'Inverting blob',
   crosshair: 'Crosshair + coords',
+  trail: 'Comet trail',
+  spotlight: 'Spotlight',
 };

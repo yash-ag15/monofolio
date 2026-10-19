@@ -63,9 +63,20 @@ export function ensureContrast(fg, bg, min = 4.5) {
 // Make an accent visible on the background (3:1 is enough for large UI elements).
 export const visibleAccent = (accent, bg) => ensureContrast(accent, bg, 3);
 
+// Greyish mid-tone backgrounds (common when sampling photos/screenshots) make every surface,
+// card and border muddy. Push them to a clean light or dark tone of the same hue.
+// Saturated mid-tones (e.g. a bold coral page) are a deliberate choice and are left alone.
+export function cleanBackground(bg) {
+  const [h, s, l] = hexToHsl(bg);
+  const lum = luminance(bg);
+  if (s > 0.28 || lum <= 0.12 || lum >= 0.72) return bg;
+  return lum > 0.3 ? hslToHex(h, Math.min(s, 0.25), 0.95) : hslToHex(h, Math.min(s, 0.3), 0.08 + l * 0.05);
+}
+
 export function finalize({ bg, fg, accent }) {
-  const f = ensureContrast(fg, bg, 7);
-  return { bg, fg: f, accent: visibleAccent(accent || f, bg) };
+  const b = cleanBackground(bg);
+  const f = ensureContrast(fg, b, 7);
+  return { bg: b, fg: f, accent: visibleAccent(accent || f, b) };
 }
 
 export const PALETTES = [

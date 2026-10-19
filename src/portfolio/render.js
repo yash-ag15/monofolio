@@ -91,6 +91,14 @@ export function scenePoster(kind) {
     globe: `<circle cx="50" cy="50" r="30" ${c} stroke-dasharray="1 2"/><ellipse cx="50" cy="50" rx="44" ry="12" ${c}/>`,
     terrain: `<path d="M0 70q12-10 25 0t25 0 25 0 25 0M0 60q12-10 25 0t25 0 25 0 25 0M0 80q12-10 25 0t25 0 25 0 25 0" ${c}/>`,
     rings: `<circle cx="50" cy="50" r="12" ${c}/><ellipse cx="50" cy="50" rx="24" ry="10" ${c}/><ellipse cx="50" cy="50" rx="10" ry="30" ${c}/><ellipse cx="50" cy="50" rx="36" ry="20" ${c} transform="rotate(30 50 50)"/>`,
+    tunnel: `<circle cx="50" cy="50" r="40" ${c}/><circle cx="50" cy="50" r="28" ${c}/><circle cx="50" cy="50" r="18" ${c}/><circle cx="50" cy="50" r="10" ${c}/><circle cx="50" cy="50" r="4" ${c}/>`,
+    helix: `<path d="M35 12c30 12 30 26 0 38s-30 26 0 38M65 12c-30 12-30 26 0 38s30 26 0 38M38 22h24M38 40h24M38 60h24M38 78h24" ${c}/>`,
+    voxels: `<path d="M14 70h10V52H14zM28 70h10V40H28zM42 70h10V30H42zM56 70h10V44H56zM70 70h10V56H70z" fill="currentColor" opacity=".85"/>`,
+    ribbon: `<path d="M6 50q22-30 44 0t44 0M6 56q22-30 44 0t44 0M6 62q22-30 44 0t44 0M6 44q22-30 44 0t44 0" ${c}/>`,
+    plexus: `<path d="M20 30L45 22 70 34 82 60 55 74 28 66 20 30 55 74M45 22L55 74M70 34L28 66" ${c}/><circle cx="20" cy="30" r="2.5" fill="currentColor"/><circle cx="45" cy="22" r="2.5" fill="currentColor"/><circle cx="70" cy="34" r="2.5" fill="currentColor"/><circle cx="82" cy="60" r="2.5" fill="currentColor"/><circle cx="55" cy="74" r="2.5" fill="currentColor"/><circle cx="28" cy="66" r="2.5" fill="currentColor"/>`,
+    galaxy: `<path d="M50 50c10-12 28-6 30 8M50 50c-10 12-28 6-30-8M50 50c12 10 6 28-8 30M50 50c-12-10-6-28 8-30" ${c} stroke-dasharray="1 2"/><circle cx="50" cy="50" r="4" fill="currentColor"/>`,
+    mobius: `<path d="M15 50c0-20 30-20 35 0s35 20 35 0-30-20-35 0-35 20-35 0z" ${c}/><path d="M18 46c4-12 26-12 32 4s28 16 32 4" ${c}/>`,
+    name3d: `<text x="50" y="62" text-anchor="middle" font-size="34" font-weight="800" fill="currentColor" font-family="system-ui">Aa</text><text x="53" y="65" text-anchor="middle" font-size="34" font-weight="800" fill="none" stroke="currentColor" stroke-width=".6" font-family="system-ui">Aa</text>`,
     model: `<path d="M50 18l28 16v32L50 82 22 66V34z M22 34l28 16 28-16 M50 50v32" ${c}/>`,
     embed: `<path d="M50 18l28 16v32L50 82 22 66V34z M22 34l28 16 28-16 M50 50v32" ${c}/>`,
   };
@@ -532,7 +540,7 @@ ul{margin:0;padding:0}
 .three.no-webgl::after,.three.model-error::after{content:'3D unavailable';position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font:500 .8rem var(--mono)}
 .has-3d.place-side{display:grid;grid-template-columns:1.15fr 1fr;gap:32px;align-items:center}
 .has-3d.place-side .three{height:min(56vh,480px)}
-.has-3d.place-background .three{position:absolute;inset:0;z-index:0;min-height:0;pointer-events:none;opacity:.9}
+.has-3d.place-background .three{position:absolute;inset:0;z-index:0;min-height:0;pointer-events:none!important;opacity:.9}
 .has-3d.place-background .hero-content,.has-3d.place-background > :not(.three){position:relative;z-index:1}
 /* sections */
 .sec{padding:var(--pad) 0;border-top:var(--bw) solid var(--line);position:relative}
@@ -899,8 +907,16 @@ function bgAnimHtml(d) {
 function heroImageCss(d) {
   if (!d.heroImage || !d.heroImageMode || d.heroImageMode === 'none' || !/^data:image\/(png|jpe?g|webp);base64,[a-z0-9+/=]+$/i.test(d.heroImage)) return '';
   const mono = d.heroImageMode !== 'color';
-  return `#top{position:relative;isolation:isolate}
-#top::before{content:'';position:absolute;inset:0;z-index:-1;background:url("${d.heroImage}") center/cover no-repeat;filter:${mono ? 'grayscale(1) contrast(1.08)' : 'none'};opacity:${d.heroImageMode === 'strong' ? 0.6 : 0.3};-webkit-mask:linear-gradient(#000 55%,transparent);mask:linear-gradient(#000 55%,transparent);pointer-events:none}`;
+  // the hero area differs per layout: Sidebar's #top is the whole page, Retro Desktop's is the desktop
+  const H = d.layout === 'sidebar' ? '.lead' : d.layout === 'os' ? '#win-hello .win-body' : '#top';
+  const strength = d.heroImageMode === 'subtle' ? 0.35 : 0.9;
+  // Image (::before) + a readability scrim (::after) between the image and the text:
+  // solid behind the text on the left, fading out so the image still shows on the right.
+  return `${H}{position:relative;isolation:isolate;overflow:hidden}
+${H}::before{content:'';position:absolute;inset:0;z-index:-2;background:url("${d.heroImage}") center/cover no-repeat;filter:${mono ? 'grayscale(1) contrast(1.05)' : 'saturate(1.05)'}${d.heroImageBlur ? ' blur(14px)' : ''};${d.heroImageBlur ? 'transform:scale(1.12);' : ''}opacity:${strength};pointer-events:none}
+${H}::after{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,color-mix(in srgb,var(--bg) 92%,transparent) 0%,color-mix(in srgb,var(--bg) 78%,transparent) 45%,color-mix(in srgb,var(--bg) 25%,transparent) 100%),linear-gradient(0deg,var(--bg) 0%,transparent 30%)}
+${H} h1{mix-blend-mode:normal!important;color:var(--fg)!important}
+@media (max-width:720px){${H}::after{background:color-mix(in srgb,var(--bg) 82%,transparent)}}`;
 }
 
 function animCss() {
@@ -961,6 +977,43 @@ function animCss() {
 @keyframes blob{50%{transform:translate(12vw,10vh) scale(1.15)}100%{transform:translate(-8vw,14vh) scale(.9)}}
 .bg-anim .floor{position:absolute;left:-50%;right:-50%;bottom:-10%;height:70vh;background-image:linear-gradient(var(--line-strong) 1px,transparent 1px),linear-gradient(90deg,var(--line-strong) 1px,transparent 1px);background-size:64px 64px;transform:perspective(420px) rotateX(62deg);transform-origin:50% 100%;animation:floor 2.4s linear infinite;-webkit-mask:linear-gradient(transparent,#000 70%);mask:linear-gradient(transparent,#000 70%)}
 @keyframes floor{to{background-position:0 64px}}
+@keyframes e-flip{from{opacity:0;transform:perspective(800px) rotateX(-70deg);transform-origin:50% 0}}
+@keyframes e-slide{from{opacity:0;transform:translateX(-80px)}}
+@keyframes e-zoom{from{opacity:0;transform:scale(1.25);filter:blur(10px)}}
+@keyframes e-wave{0%{opacity:0;transform:translateY(.9em)}60%{opacity:1;transform:translateY(-.18em)}100%{transform:none}}
+@keyframes curtain-up{0%{transform:none}100%{transform:translateY(-101%)}}
+.enter-flip .enter{animation:e-flip 1s cubic-bezier(.2,.8,.2,1) both}
+.enter-slide .enter{animation:e-slide .9s cubic-bezier(.2,.8,.2,1) both}
+.enter-zoom .enter{animation:e-zoom 1.2s cubic-bezier(.2,.8,.2,1) both}
+.enter-wave .enter,.enter-curtain .enter{animation:e-rise .95s cubic-bezier(.2,.8,.2,1) both}
+.enter-wave .enter-h .ch{animation-name:e-wave;animation-duration:.9s}
+.curtain{position:fixed;inset:0;z-index:1600;background:var(--fg);animation:curtain-up 1s .25s cubic-bezier(.76,0,.24,1) forwards;pointer-events:none}
+.rv-flip .reveal{opacity:0;transform:perspective(1000px) rotateX(-22deg) translateY(40px);transform-origin:50% 0}
+.rv-tilt .reveal{opacity:0;transform:rotate(-3deg) translateY(60px)}
+.rv-zoom .reveal{opacity:0;transform:scale(1.08);filter:blur(8px)}
+.rv-skew .reveal{opacity:0;transform:skewY(6deg) translateY(70px)}
+.title-highlight .sec-label{background:linear-gradient(color-mix(in srgb,var(--accent) 32%,transparent),color-mix(in srgb,var(--accent) 32%,transparent)) 0 88%/0 .38em no-repeat;transition:background-size 1.1s cubic-bezier(.7,0,.2,1) .2s;display:inline-block}
+.title-highlight .sec.in .sec-label{background-size:100% .38em}
+.title-blur .sec-label{opacity:0;filter:blur(12px);letter-spacing:.2em;transition:opacity 1s,filter 1s,letter-spacing 1.2s cubic-bezier(.2,.8,.2,1)}
+.title-blur .sec.in .sec-label{opacity:1;filter:none;letter-spacing:inherit}
+.title-wave .sec-label .lc{display:inline-block}
+.title-wave .sec.in .sec-label .lc{animation:e-wave .8s calc(var(--i) * 45ms) both}
+.card-spotlight .project,.card-spotlight .tile{position:relative;overflow:hidden}
+.card-spotlight .project::before,.card-spotlight .tile::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(320px circle at var(--gx,50%) var(--gy,50%),color-mix(in srgb,var(--fg) 13%,transparent),transparent 65%)}
+.card-spotlight .project:hover::before,.card-spotlight .tile:hover::before{opacity:1}
+.card-shine .project{position:relative;overflow:hidden}
+.card-shine .project::after{content:'';position:absolute;top:0;bottom:0;left:-60%;width:40%;pointer-events:none;background:linear-gradient(105deg,transparent,color-mix(in srgb,var(--fg) 14%,transparent),transparent);transform:skewX(-20deg);transition:left .8s cubic-bezier(.2,.8,.2,1)}
+.card-shine .project:hover::after{left:130%}
+.c-spot{position:fixed;inset:0;pointer-events:none;z-index:990;background:radial-gradient(260px circle at var(--sx,-999px) var(--sy,-999px),color-mix(in srgb,var(--fg) 9%,transparent),transparent 70%)}
+.c-trail{position:fixed;left:-4px;top:-4px;width:8px;height:8px;border-radius:50%;background:var(--accent);pointer-events:none;z-index:1400}
+.text-fill .fw{opacity:.18;transition:opacity .35s}
+.text-fill .fw.on{opacity:1}
+.scroll-skew .sec-body,.scroll-skew .hero-content{transform:skewY(var(--skew,0deg));will-change:transform}
+.fx-ripple{position:fixed;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid var(--fg);pointer-events:none;z-index:1500;animation:fx-rip .7s ease-out forwards}
+@keyframes fx-rip{to{transform:scale(7);opacity:0}}
+.fx-burst{position:fixed;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:var(--accent);pointer-events:none;z-index:1500;animation:fx-bur .65s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes fx-bur{to{transform:translate(var(--bx),var(--by)) scale(.2);opacity:0}}
+@media (prefers-reduced-motion:reduce){.curtain{display:none}.text-fill .fw{opacity:1}.title-blur .sec-label{opacity:1;filter:none}}
 @media (prefers-reduced-motion:reduce){.enter,.enter-h .ch,.enter-h .tw{animation:none!important;opacity:1!important}.reveal,.reveal .project,.reveal .entry,.reveal .skill-group,.reveal .rows li{opacity:1!important;transform:none!important;filter:none!important;clip-path:none!important;translate:none!important}.title-letters .sec-label .lc{opacity:1;transform:none}}
 `;
 }
@@ -998,6 +1051,10 @@ export function renderPortfolio(profile, design, opts = {}) {
     parallax: !lite && d.parallax,
     counters: !lite && d.counters,
     bgAnim: lite ? 'none' : d.bgAnim,
+    textFill: !lite && d.textFill,
+    scrollSkew: !lite && d.scrollSkew,
+    clickFx: lite ? 'none' : d.clickFx,
+    cardHover: d.cardHover,
     introDelay: d.preloader && !opts.preview && !lite ? 1100 : 0,
   };
   const scripts = [`(${effectsRuntime.toString()})(${inlineJson(effectsCfg)});`, `(${animRuntime.toString()})(${inlineJson(animCfg)});`];
@@ -1005,12 +1062,23 @@ export function renderPortfolio(profile, design, opts = {}) {
   if (d.layout === 'os') scripts.push(`(${desktopRuntime.toString()})();`);
 
   const needsThree = !lite && kind !== 'none' && kind !== 'embed';
-  const threeCfg = { kind, seed: hashString(`${b.name}|${d.seed}`), model: d.modelData || d.modelUrl || '', mono: d.modelMono !== false };
+  const firstName = nameWords(b.name)[0] || '';
+  const threeCfg = {
+    kind,
+    seed: hashString(`${b.name}|${d.seed}`),
+    model: d.modelData || d.modelUrl || '',
+    mono: d.modelMono !== false,
+    speed: Number(d.threeSpeed) || 1,
+    drag: !!d.drag3d,
+    text: firstName.length && firstName.length <= 7 ? firstName : initials(b.name),
+    fontUrl: `https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}/examples/fonts/helvetiker_bold.typeface.json`,
+  };
   const threeBlock = needsThree
     ? `<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}/examples/jsm/"}}</script>
 <script type="module">import * as THREE from 'three';
 const loadGLTF = () => import('three/addons/loaders/GLTFLoader.js');
-(${threeRuntime.toString()})(THREE, ${inlineJson(threeCfg)}, loadGLTF);</script>`
+const loadText = () => Promise.all([import('three/addons/loaders/FontLoader.js'), import('three/addons/geometries/TextGeometry.js')]);
+(${threeRuntime.toString()})(THREE, ${inlineJson(threeCfg)}, loadGLTF, loadText);</script>`
     : '';
 
   const preloader = d.preloader && !opts.preview && !lite ? `<div id="preloader" aria-hidden="true"><span class="pre-name">${esc(b.name)}</span><span class="pre-count">000</span></div><noscript><style>#preloader{display:none}</style></noscript>` : '';
@@ -1032,7 +1100,7 @@ const loadGLTF = () => import('three/addons/loaders/GLTFLoader.js');
 <style>${buildCss(d)}${animCss()}${accentCss()}${heroImageCss(d)}${def.css || ''}${colorCss(d)}
 ${String(d.customCss || '').replace(/<\/style/gi, '<\\/style')}</style>
 </head>
-<body class="layout-${esc(d.layout)} theme-${esc(themeKey)} enter-${esc(d.entrance || 'none')} rv-${esc(revealStyleOf(d))} link-${esc(d.linkStyle || 'underline')} title-${esc(d.titleAnim || 'none')} card-${esc(d.cardHover || 'none')} accent-${esc(d.accentUse || 'links')}">
+<body class="layout-${esc(d.layout)} theme-${esc(themeKey)} enter-${esc(d.entrance || 'none')} rv-${esc(revealStyleOf(d))} link-${esc(d.linkStyle || 'underline')} title-${esc(d.titleAnim || 'none')} card-${esc(d.cardHover || 'none')} accent-${esc(d.accentUse || 'links')}${d.scrollSkew ? ' scroll-skew' : ''}${d.textFill ? ' text-fill' : ''}">
 <a class="skip" href="#main">Skip to content</a>
 ${bgAnimHtml(d)}${preloader}${progress}
 ${body}

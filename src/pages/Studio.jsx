@@ -1,10 +1,13 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_DESIGN, SECTION_LABELS, useStore } from '../store.jsx';
+import { COLOR_KEYS, DEFAULT_DESIGN, SECTION_LABELS, useStore, withFreshLook } from '../store.jsx';
 import { Icon, Seg, Switch, downloadFile, useToast } from '../components/ui.jsx';
-import { CURSORS, FONT_PAIRS, SCENES, THEMES, THEME_CATEGORIES, renderPortfolio, scenePoster, signatureSvg, slugName } from '../portfolio/render.js';
+import { CURSORS, FONT_PAIRS, SCENES, THEMES, THEME_CATEGORIES, hashString, renderPortfolio, scenePoster, signatureSvg, slugName } from '../portfolio/render.js';
 import { BRIEF_EXAMPLES, fingerprint, generateVariation, interpretBrief, uniquenessScore } from '../portfolio/brief.js';
 import ColorsPanel from './ColorsPanel.jsx';
-import { analyzeImage, averageTraits, describeTraits, designFromTraits, matchThemes, readImageFile } from '../lib/inspire.js';
+import CodePanel from './CodePanel.jsx';
+import HistoryBar from '../components/HistoryBar.jsx';
+import InspirePanel from './InspirePanel.jsx';
+import { Pressable, Thumb } from '../components/Thumb.jsx';
 
 const TOOLS = [
   { id: 'themes', label: 'Themes', icon: 'grid' },
@@ -15,6 +18,7 @@ const TOOLS = [
   { id: 'motion', label: 'Motion', icon: 'zap' },
   { id: 'three', label: '3D', icon: 'cube' },
   { id: 'layout', label: 'Layout', icon: 'layout' },
+  { id: 'code', label: 'Code', icon: 'code' },
   { id: 'publish', label: 'Publish', icon: 'rocket' },
 ];
 
@@ -27,6 +31,11 @@ const ENTRANCES = [
   ['mask', 'Mask wipe', 'Revealed by a wipe'],
   ['split', 'Letters', 'Name animates per letter'],
   ['typewriter', 'Typewriter', 'Name types itself'],
+  ['wave', 'Wave', 'Letters bounce in like a wave'],
+  ['flip', 'Flip', 'Elements flip up in 3D'],
+  ['slide', 'Slide', 'Glide in from the left'],
+  ['zoom', 'Zoom out', 'Settle in from a blurry zoom'],
+  ['curtain', 'Curtain', 'A panel lifts to reveal the page'],
 ];
 const REVEALS = [
   ['none', 'None'],
@@ -36,6 +45,10 @@ const REVEALS = [
   ['blur', 'Blur'],
   ['slide', 'Slide'],
   ['clip', 'Clip wipe'],
+  ['flip', '3D flip'],
+  ['tilt', 'Tilt'],
+  ['zoom', 'Zoom'],
+  ['skew', 'Skew'],
 ];
 const BACKGROUNDS = [
   ['none', 'None', 'Plain'],
@@ -45,6 +58,10 @@ const BACKGROUNDS = [
   ['grid', 'Retro grid', 'Moving perspective floor'],
   ['dots', 'Reactive dots', 'Dots swell near the cursor'],
   ['waves', 'Waves', 'Flowing line field'],
+  ['constellation', 'Constellation', 'Linked stars that reach for your cursor'],
+  ['rain', 'Rain', 'Slanted falling streaks'],
+  ['bubbles', 'Bubbles', 'Bubbles drifting upwards'],
+  ['flow', 'Flow field', 'Particles tracing invisible currents'],
 ];
 const ANIM_PRESETS = [
   { name: 'Still', desc: 'No motion at all', set: { motion: 'none', entrance: 'none', revealStyle: 'none', bgAnim: 'none', titleAnim: 'none', cardHover: 'none', linkStyle: 'underline', parallax: false, counters: false, scramble: false, preloader: false } },
@@ -55,6 +72,8 @@ const ANIM_PRESETS = [
   { name: 'Hacker', desc: 'Typing, decoding, code rain', set: { motion: 'subtle', entrance: 'typewriter', revealStyle: 'clip', bgAnim: 'matrix', titleAnim: 'scramble', cardHover: 'invert', linkStyle: 'arrow', scramble: true, cursor: 'crosshair' } },
   { name: 'Space', desc: 'Stars, blur and a soft cursor', set: { motion: 'subtle', entrance: 'blur', revealStyle: 'rise', bgAnim: 'stars', titleAnim: 'none', cardHover: 'lift', cursor: 'ring', counters: true } },
   { name: 'Synthwave', desc: 'Retro grid and glitch titles', set: { motion: 'subtle', entrance: 'scale', revealStyle: 'slide', bgAnim: 'grid', titleAnim: 'scramble', cardHover: 'outline', linkStyle: 'highlight', progress: true } },
+  { name: 'Dreamy', desc: 'Zoom, blur titles, flowing particles', set: { motion: 'subtle', entrance: 'zoom', revealStyle: 'zoom', bgAnim: 'flow', titleAnim: 'blur', cardHover: 'spotlight', linkStyle: 'slide', cursor: 'spotlight', textFill: true, scrollSkew: false, clickFx: 'ripple' } },
+  { name: 'Energetic', desc: 'Wave letters, skew, bursts', set: { motion: 'subtle', entrance: 'wave', revealStyle: 'skew', bgAnim: 'constellation', titleAnim: 'wave', cardHover: 'shine', linkStyle: 'highlight', cursor: 'trail', scrollSkew: true, clickFx: 'burst', counters: true } },
 ];
 const EFFECTS = [
   { key: 'parallax', label: 'Parallax hero', desc: 'Hero drifts and fades as you scroll.' },
@@ -63,10 +82,13 @@ const EFFECTS = [
   { key: 'preloader', label: 'Intro preloader', desc: '000→100 counter that wipes away.' },
   { key: 'progress', label: 'Scroll progress', desc: 'Thin bar tracks reading progress.' },
   { key: 'grain', label: 'Film grain', desc: 'Animated analog noise overlay.' },
+  { key: 'textFill', label: 'Text fill on scroll', desc: 'Paragraphs light up word by word as you scroll.' },
+  { key: 'scrollSkew', label: 'Scroll skew', desc: 'Content leans with your scroll speed.' },
 ];
 const INTERACTIONS = [
   { key: 'tilt', label: '3D tilt cards', desc: 'Project cards tilt toward the cursor.' },
   { key: 'magnetic', label: 'Magnetic buttons', desc: 'Buttons pull toward the cursor.' },
+  { key: 'drag3d', label: 'Drag to rotate 3D', desc: 'Visitors can grab and spin the 3D object (when it sits beside your text).' },
 ];
 const MAX_MODEL_BYTES = 3 * 1024 * 1024;
 
@@ -79,64 +101,6 @@ function Ctl({ label, aside, hint, children }) {
       </div>
       {children}
       {hint && <span className="hint">{hint}</span>}
-    </div>
-  );
-}
-
-// Thumbnails mount one after another (not all at once) so the browser loads them smoothly.
-let nextSlot = 0;
-function scheduleMount(cb) {
-  const now = performance.now();
-  const at = Math.max(now, nextSlot);
-  nextSlot = at + 110;
-  return setTimeout(cb, at - now);
-}
-
-// Live mini-render of a full page, mounted only when scrolled into view.
-function Thumb({ html, scale, height, width = 1280, eager = false }) {
-  const ref = useRef(null);
-  const [visible, setVisible] = useState(eager);
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || visible) return;
-    const io = new IntersectionObserver((es) => {
-      if (es[0].isIntersecting) {
-        setVisible(true);
-        io.disconnect();
-      }
-    }, { rootMargin: '200px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [visible]);
-  useEffect(() => {
-    if (!visible || show) return;
-    const t = scheduleMount(() => setShow(true));
-    return () => clearTimeout(t);
-  }, [visible, show]);
-  return (
-    <div className="vthumb" style={{ height }} ref={ref}>
-      {show ? <iframe title="Preview" srcDoc={html} tabIndex={-1} sandbox="allow-scripts" style={{ width, height: height / scale, transform: `scale(${scale})` }} /> : <div className="thumb-skel" />}
-    </div>
-  );
-}
-
-function Pressable({ className, onActivate, children, label }) {
-  return (
-    <div
-      className={className}
-      role="button"
-      tabIndex={0}
-      aria-label={label}
-      onClick={onActivate}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onActivate();
-        }
-      }}
-    >
-      {children}
     </div>
   );
 }
@@ -179,24 +143,17 @@ export default function Studio() {
     return TOOLS.some((x) => x.id === t) ? t : 'themes';
   });
   const [cat, setCat] = useState('All');
+  const [keepColors, setKeepColors] = useState(false);
   const [device, setDevice] = useState('desktop');
   const [full, setFull] = useState(() => new URLSearchParams(window.location.hash.split('?')[1] || '').get('full') === '1');
   const [notes, setNotes] = useState([]);
-  const [history, setHistory] = useState([]);
   const [varSeed, setVarSeed] = useState(() => Math.floor(Math.random() * 1e6));
   const [dragKey, setDragKey] = useState(null);
   const [replay, setReplay] = useState(0);
-  const [busy, setBusy] = useState(false);
 
   const set = (patch) => dispatch({ type: 'design/set', patch });
-  const snapshot = () => setHistory((h) => [...h.slice(-19), design]);
-  const undo = () => {
-    const prev = history[history.length - 1];
-    if (!prev) return;
-    dispatch({ type: 'design/replace', design: prev });
-    setHistory((h) => h.slice(0, -1));
-    toast('Reverted to previous design');
-  };
+  // Every design change is recorded by the store's undo history; nothing to do here anymore.
+  const snapshot = () => {};
 
   useEffect(() => {
     const onKey = (e) => {
@@ -212,15 +169,30 @@ export default function Studio() {
 
   const score = uniquenessScore(design, DEFAULT_DESIGN);
   const fp = fingerprint(profile.basics.name, design);
+
+  // ---- live code editor
+  const code = state.code || { html: '', active: false, fp: '' };
+  const useCode = code.active && !!code.html;
+  // what the edited code was copied from: the design AND the profile content
+  const designFp = `${fp}:${hashString(JSON.stringify(profile))}`;
+  const generatedFull = useMemo(() => (tab === 'code' ? renderPortfolio(profile, design) : ''), [tab, profile, design]);
+  // the final page that Open / Export / Copy use
+  const finalHtml = () => (useCode ? code.html : renderPortfolio(profile, design));
+  // in the preview, keep in-page links working and open external links in a new tab
+  const PREVIEW_JS = "<script>document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a');if(!a)return;var h=a.getAttribute('href')||'';e.preventDefault();if(h.charAt(0)==='#'){var t=document.getElementById(h.slice(1));if(t)t.scrollIntoView({behavior:'smooth'})}else if(h)window.open(a.href,'_blank','noopener')});<\/script>";
+  const previewHtml = useCode ? (code.html.lastIndexOf('</body>') >= 0 ? code.html.slice(0, code.html.lastIndexOf('</body>')) + PREVIEW_JS + code.html.slice(code.html.lastIndexOf('</body>')) : code.html + PREVIEW_JS) : html;
   const theme = THEMES[design.layout] || THEMES.classic;
   const base = theme.base || design.layout;
 
   const themeKeys = Object.keys(THEMES).filter((k) => cat === 'All' || THEMES[k].cat === cat);
+  // A theme starts from a clean look (so it never blends with the previous design);
+  // optionally carrying over the current colours and hero image.
+  const themeDesign = (key) => withFreshLook(design, { layout: key, ...THEMES[key].preset }, keepColors ? COLOR_KEYS : []);
   const themeThumbs = useMemo(
-    () => Object.fromEntries(Object.keys(THEMES).map((k) => [k, renderPortfolio(profile, { ...design, layout: k, ...THEMES[k].preset, accent: design.accent, ...(design.colorScheme === 'custom' ? { mode: design.mode } : {}), heroImage: '' }, { thumb: true })])),
-    // regenerate when content changes, not on every style tweak
+    () => Object.fromEntries(Object.keys(THEMES).map((k) => [k, renderPortfolio(profile, { ...themeDesign(k), heroImage: '' }, { thumb: true })])),
+    // regenerate when content or the keep-colours choice changes, not on every style tweak
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [profile, design.accent, design.colorScheme, design.colors, design.accentUse]
+    [profile, keepColors, design.accent, design.colorScheme, design.colors, design.accentUse]
   );
 
   const variations = useMemo(
@@ -231,36 +203,17 @@ export default function Studio() {
 
   // ---- inspiration
   const insp = state.inspiration || [];
-  const traits = useMemo(() => averageTraits(insp.map((i) => i.traits)), [insp]);
-  const matches = useMemo(() => (traits ? matchThemes(traits, 4) : []), [traits]);
-  const addInspiration = async (files) => {
-    const list = [...files].filter((f) => f.type.startsWith('image/')).slice(0, 4 - insp.length);
-    if (!list.length) return toast(insp.length >= 4 ? 'Up to 4 images — remove one first' : 'Please choose image files');
-    setBusy(true);
-    try {
-      const added = [];
-      for (const f of list) {
-        const src = await readImageFile(f, 1400);
-        added.push({ id: Math.random().toString(36).slice(2, 9), name: f.name, src, traits: await analyzeImage(src) });
-      }
-      dispatch({ type: 'inspiration/set', items: [...insp, ...added] });
-      toast(`Analysed ${added.length} image${added.length > 1 ? 's' : ''}`);
-    } catch {
-      toast('Could not read that image');
-    } finally {
-      setBusy(false);
-    }
-  };
+  const traits = insp[0]?.traits?.layout ? insp[0].traits : null;
 
   const applyTheme = (key) => {
     snapshot();
-    set({ layout: key, ...THEMES[key].preset });
-    toast(`${THEMES[key].name} applied — make it yours with Style, Motion and 3D`);
+    dispatch({ type: 'design/replace', design: themeDesign(key), label: `Theme: ${THEMES[key].name}` });
+    toast(`${THEMES[key].name} applied${keepColors ? ' with your colours' : ''} — make it yours with Colours, Type and Motion`);
   };
 
   const applyVariation = (v) => {
     snapshot();
-    dispatch({ type: 'design/replace', design: { ...v, brief: design.brief, customCss: design.customCss, modelUrl: design.modelUrl, modelData: design.modelData, embedUrl: design.embedUrl, heroImage: design.heroImage, heroImageMode: design.heroImageMode } });
+    dispatch({ type: 'design/replace', design: v, label: 'Remix' });
     toast('Remix applied');
   };
 
@@ -277,11 +230,11 @@ export default function Studio() {
   };
 
   const exportHtml = () => {
-    downloadFile('index.html', renderPortfolio(profile, design), 'text/html');
-    toast('Downloaded index.html');
+    downloadFile('index.html', finalHtml(), 'text/html');
+    toast(useCode ? 'Downloaded index.html (your edited code)' : 'Downloaded index.html');
   };
   const openTab = () => {
-    const blob = new Blob([renderPortfolio(profile, design)], { type: 'text/html' });
+    const blob = new Blob([finalHtml()], { type: 'text/html' });
     window.open(URL.createObjectURL(blob), '_blank', 'noopener');
   };
 
@@ -318,7 +271,7 @@ export default function Studio() {
 
   return (
     <div className="page page-wide">
-      <div className={`studio ${full ? 'is-full' : ''}`}>
+      <div className={`studio ${full ? 'is-full' : ''} ${tab === 'code' ? 'code-mode' : ''}`}>
         <nav className="rail" aria-label="Studio tools">
           {TOOLS.map((t) => (
             <button key={t.id} className={`rail-btn ${tab === t.id ? 'on' : ''}`} onClick={() => setTab(t.id)} aria-current={tab === t.id}>
@@ -337,9 +290,7 @@ export default function Studio() {
                 <span className="badge">{theme.cat}</span>
               </h2>
             </div>
-            <button className="btn ghost sm" onClick={undo} disabled={!history.length} title="Undo">
-              <Icon name="undo" /> Undo
-            </button>
+            {!full && <HistoryBar />}
           </div>
           <div className="meter-card">
             <div className="meter">
@@ -358,6 +309,15 @@ export default function Studio() {
 
           {tab === 'themes' && (
             <div className="panel-body">
+              <div className="effect-list">
+                <div className="effect">
+                  <div>
+                    <b>Keep my colours &amp; image</b>
+                    <span>Off: each theme comes in its own original look. On: themes use your current colour scheme and hero image.</span>
+                  </div>
+                  <Switch checked={keepColors} onChange={setKeepColors} />
+                </div>
+              </div>
               <div className="chips">
                 {THEME_CATEGORIES.map((c) => (
                   <button key={c} className={`chip ${cat === c ? 'on' : ''}`} onClick={() => setCat(c)}>
@@ -381,109 +341,7 @@ export default function Studio() {
             </div>
           )}
 
-          {tab === 'inspire' && (
-            <div className="panel-body">
-              <label
-                className={`dropzone ${busy ? 'busy' : ''}`}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  addInspiration(e.dataTransfer.files);
-                }}
-              >
-                <Icon name="image" size={24} />
-                <b>{busy ? 'Reading your image…' : 'Drop a design, screenshot or moodboard'}</b>
-                <span>We read its brightness, contrast, detail, warmth and colours — and match a portfolio to it. Up to 4 images, analysed on your device.</span>
-                <input type="file" accept="image/*" multiple hidden onChange={(e) => { addInspiration(e.target.files); e.target.value = ''; }} />
-              </label>
-
-              {insp.length > 0 && (
-                <>
-                  <div className="insp-row">
-                    {insp.map((im) => (
-                      <div key={im.id} className={`insp ${design.heroImage === im.src ? 'used' : ''}`}>
-                        <img src={im.src} alt={im.name} />
-                        <button className="insp-x" aria-label="Remove image" onClick={() => dispatch({ type: 'inspiration/set', items: insp.filter((x) => x.id !== im.id) })}>
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-
-                  {traits && (
-                    <Ctl label="What we see">
-                      <div className="palette">
-                        {traits.palette.map((c) => (
-                          <span key={c} style={{ background: c }} title={c} />
-                        ))}
-                      </div>
-                      <div className="trait-bars">
-                        {[
-                          ['Darkness', traits.dark],
-                          ['Contrast', traits.contrast],
-                          ['Detail', traits.busy],
-                          ['Warmth', traits.warm],
-                          ['Colour', traits.color],
-                        ].map(([k, v]) => (
-                          <div key={k} className="trait">
-                            <span>{k}</span>
-                            <div className="progress">
-                              <i style={{ width: `${Math.round(v * 100)}%` }} />
-                            </div>
-                            <span className="mono">{Math.round(v * 100)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <ul className="notes">
-                        {describeTraits(traits).map((n) => (
-                          <li key={n}>{n}</li>
-                        ))}
-                      </ul>
-                    </Ctl>
-                  )}
-
-                  <Ctl label="Best-matching portfolios" hint="Each one is generated from your image’s traits applied to that theme.">
-                    <div className="theme-grid">
-                      {matches.map((m) => {
-                        const d = { ...design, ...designFromTraits(traits, m.key) };
-                        return (
-                          <Pressable
-                            key={m.key}
-                            className="theme-card"
-                            label={`Apply ${THEMES[m.key].name} from inspiration`}
-                            onActivate={() => {
-                              snapshot();
-                              set(designFromTraits(traits, m.key));
-                              toast(`Applied ${THEMES[m.key].name}, tuned to your image`);
-                            }}
-                          >
-                            <Thumb html={renderPortfolio(profile, d, { thumb: true })} scale={0.135} height={118} eager />
-                            <div className="theme-meta">
-                              <b>
-                                {THEMES[m.key].name} <span className="match">{m.score}% match</span>
-                              </b>
-                              <span>{THEMES[m.key].desc}</span>
-                            </div>
-                          </Pressable>
-                        );
-                      })}
-                    </div>
-                  </Ctl>
-
-                  <Ctl label="Use an image in your hero" hint="Shown softly behind your name. Pick an image, then a style.">
-                    <div className="insp-row">
-                      {insp.map((im) => (
-                        <button key={im.id} className={`insp pick ${design.heroImage === im.src ? 'used' : ''}`} onClick={() => set({ heroImage: im.src, heroImageMode: design.heroImageMode === 'none' ? 'subtle' : design.heroImageMode })}>
-                          <img src={im.src} alt="" />
-                        </button>
-                      ))}
-                    </div>
-                    <Seg value={design.heroImageMode} onChange={(v) => set({ heroImageMode: v })} options={[{ value: 'none', label: 'Off' }, { value: 'subtle', label: 'Subtle B&W' }, { value: 'strong', label: 'Strong B&W' }, { value: 'color', label: 'Colour' }]} />
-                  </Ctl>
-                </>
-              )}
-            </div>
-          )}
+          {tab === 'inspire' && <InspirePanel profile={profile} design={design} set={set} snapshot={snapshot} toast={toast} dispatch={dispatch} insp={insp} />}
 
           {tab === 'brief' && (
             <div className="panel-body">
@@ -552,6 +410,8 @@ export default function Studio() {
           )}
 
           {tab === 'colors' && <ColorsPanel design={design} set={set} snapshot={snapshot} traits={traits} toast={toast} />}
+
+          {tab === 'code' && <CodePanel generated={generatedFull} code={code} designFp={designFp} dispatch={dispatch} toast={toast} />}
 
           {tab === 'style' && (
             <div className="panel-body">
@@ -629,19 +489,22 @@ export default function Studio() {
                 <Choice items={ENTRANCES} value={design.entrance} onChange={(v) => { set({ entrance: v, motion: design.motion === 'none' ? 'subtle' : design.motion }); setReplay((r) => r + 1); }} />
               </Ctl>
               <Ctl label="Scroll reveal" hint="Sections animate in as they scroll into view; cards and entries stagger.">
-                <Seg value={design.revealStyle} onChange={(v) => set({ revealStyle: v, motion: design.motion === 'none' ? 'subtle' : design.motion })} options={REVEALS.map(([value, label]) => ({ value, label }))} />
+                <Choice cols={3} items={REVEALS} value={design.revealStyle} onChange={(v) => set({ revealStyle: v, motion: design.motion === 'none' ? 'subtle' : design.motion })} />
               </Ctl>
               <Ctl label="Section titles">
-                <Seg value={design.titleAnim} onChange={(v) => set({ titleAnim: v })} options={[{ value: 'none', label: 'Static' }, { value: 'letters', label: 'Letters' }, { value: 'line', label: 'Underline draw' }, { value: 'scramble', label: 'Decode' }]} />
+                <Seg value={design.titleAnim} onChange={(v) => set({ titleAnim: v })} options={[{ value: 'none', label: 'Static' }, { value: 'letters', label: 'Letters' }, { value: 'wave', label: 'Wave' }, { value: 'line', label: 'Underline draw' }, { value: 'highlight', label: 'Marker' }, { value: 'blur', label: 'Blur in' }, { value: 'scramble', label: 'Decode' }]} />
               </Ctl>
               <Ctl label="Animated background">
                 <Choice items={BACKGROUNDS} value={design.bgAnim} onChange={(v) => set({ bgAnim: v })} />
               </Ctl>
               <Ctl label="Card hover">
-                <Seg value={design.cardHover} onChange={(v) => set({ cardHover: v })} options={[{ value: 'none', label: 'None' }, { value: 'lift', label: 'Lift' }, { value: 'zoom', label: 'Zoom image' }, { value: 'outline', label: 'Outline' }, { value: 'invert', label: 'Invert' }]} />
+                <Seg value={design.cardHover} onChange={(v) => set({ cardHover: v })} options={[{ value: 'none', label: 'None' }, { value: 'lift', label: 'Lift' }, { value: 'spotlight', label: 'Spotlight' }, { value: 'shine', label: 'Shine' }, { value: 'zoom', label: 'Zoom image' }, { value: 'outline', label: 'Outline' }, { value: 'invert', label: 'Invert' }]} />
               </Ctl>
               <Ctl label="Link hover">
                 <Seg value={design.linkStyle} onChange={(v) => set({ linkStyle: v })} options={[{ value: 'underline', label: 'Underline' }, { value: 'slide', label: 'Slide in' }, { value: 'highlight', label: 'Highlight' }, { value: 'arrow', label: 'Arrow' }]} />
+              </Ctl>
+              <Ctl label="Click effect">
+                <Seg value={design.clickFx} onChange={(v) => set({ clickFx: v })} options={[{ value: 'none', label: 'None' }, { value: 'ripple', label: 'Ripple' }, { value: 'burst', label: 'Burst' }]} />
               </Ctl>
               <Ctl label="Extras" hint="The preloader plays on the published site (Open ↗ to see it). Every animation respects the visitor’s “reduce motion” setting.">
                 <Toggles items={EFFECTS} design={design} set={set} />
@@ -722,6 +585,11 @@ export default function Studio() {
                   ))}
                 </div>
               </Ctl>
+              {design.hero3d !== 'none' && design.hero3d !== 'embed' && (
+                <Ctl label="3D speed">
+                  <Seg value={Number(design.threeSpeed)} onChange={(v) => set({ threeSpeed: v })} options={[{ value: 0.4, label: 'Slow' }, { value: 1, label: 'Normal' }, { value: 2, label: 'Fast' }]} />
+                </Ctl>
+              )}
               <Ctl label="Interactions">
                 <Toggles items={INTERACTIONS} design={design} set={set} />
               </Ctl>
@@ -788,7 +656,7 @@ export default function Studio() {
                     className="btn secondary"
                     onClick={async () => {
                       try {
-                        await navigator.clipboard.writeText(renderPortfolio(profile, design));
+                        await navigator.clipboard.writeText(finalHtml());
                         toast('HTML copied to clipboard');
                       } catch {
                         toast('Clipboard blocked — use Download instead');
@@ -834,7 +702,7 @@ export default function Studio() {
                         if (!f) return;
                         try {
                           snapshot();
-                          dispatch({ type: 'design/replace', design: JSON.parse(await f.text()) });
+                          dispatch({ type: 'design/replace', design: JSON.parse(await f.text()), label: 'Loaded design' });
                           toast('Design loaded');
                         } catch {
                           toast('That file is not a valid design');
@@ -843,7 +711,7 @@ export default function Studio() {
                       }}
                     />
                   </label>
-                  <button className="btn ghost sm" onClick={() => { snapshot(); dispatch({ type: 'design/replace', design: { ...DEFAULT_DESIGN } }); toast('Design reset'); }}>
+                  <button className="btn ghost sm" onClick={() => { dispatch({ type: 'design/reset', scope: 'theme' }); toast(`${theme.name} reset to its original look — press Undo to get your changes back`); }}>
                     Reset
                   </button>
                 </div>
@@ -857,7 +725,9 @@ export default function Studio() {
             <Seg value={device} onChange={setDevice} options={[{ value: 'desktop', label: <Icon name="monitor" size={15} /> }, { value: 'tablet', label: <Icon name="tablet" size={15} /> }, { value: 'mobile', label: <Icon name="phone" size={15} /> }]} />
             <div className="url-pill">
               <span className="dot-live" /> {(state.github.username || slugName(profile.basics.name) || 'you').toLowerCase()}.github.io
+              {useCode && <span className="badge solid code-on">Your code</span>}
             </div>
+            {full && <HistoryBar />}
             <button className="btn ghost icon" title="Replay animations" onClick={() => setReplay((r) => r + 1)}>
               <Icon name="refresh" />
             </button>
@@ -878,7 +748,7 @@ export default function Studio() {
             </button>
           </div>
           <div className="preview-stage">
-            <iframe key={replay} className={`preview-frame ${device}`} title="Portfolio preview" srcDoc={html} sandbox="allow-scripts allow-popups allow-same-origin" />
+            <iframe key={replay} className={`preview-frame ${device}`} title="Portfolio preview" srcDoc={previewHtml} sandbox={useCode ? 'allow-scripts allow-popups' : 'allow-scripts allow-popups allow-same-origin'} />
           </div>
         </div>
       </div>

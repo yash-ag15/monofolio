@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useReducer } from 'react';
+import { THEMES } from './portfolio/themes.js';
 
 const STORAGE_KEY = 'monofolio:v1';
 
@@ -68,8 +69,14 @@ export const DEFAULT_DESIGN = {
   cardHover: 'none',
   parallax: false,
   counters: false,
+  threeSpeed: 1,
+  drag3d: false,
+  clickFx: 'none',
+  textFill: false,
+  scrollSkew: false,
   heroImage: '',
   heroImageMode: 'none',
+  heroImageBlur: false,
   colorScheme: 'mono',
   colors: { bg: '#f4f0e8', fg: '#1b1916', accent: '#b4532a' },
   accentUse: 'links',
@@ -78,6 +85,26 @@ export const DEFAULT_DESIGN = {
   customCss: '',
   seed: 1,
 };
+
+// Everything that makes up the *look* of a portfolio. When switching to a theme, remix or
+// inspiration design we reset these first, so two designs never blend into each other.
+// (Content-ish settings — section order, hidden sections, brief, custom CSS, uploaded 3D model — are kept.)
+export const LOOK_KEYS = [
+  'mode', 'paper', 'fontPair', 'scale', 'density', 'radius', 'border', 'heroStyle', 'projectStyle', 'sectionLabel', 'headingCase',
+  'texture', 'motion', 'nav', 'mark', 'accent', 'hero3d', 'hero3dPlace', 'cursor', 'tilt', 'magnetic', 'scramble', 'progress', 'grain',
+  'preloader', 'entrance', 'revealStyle', 'bgAnim', 'titleAnim', 'linkStyle', 'cardHover', 'parallax', 'counters',
+  'heroImage', 'heroImageMode', 'heroImageBlur', 'colorScheme', 'colors', 'accentUse',
+  'threeSpeed', 'drag3d', 'clickFx', 'textFill', 'scrollSkew',
+];
+export const COLOR_KEYS = ['colorScheme', 'colors', 'accent', 'accentUse', 'heroImage', 'heroImageMode', 'heroImageBlur'];
+
+export function withFreshLook(design, patch, keep = []) {
+  const fresh = {};
+  LOOK_KEYS.forEach((k) => {
+    fresh[k] = keep.includes(k) ? design[k] : DEFAULT_DESIGN[k];
+  });
+  return { ...design, ...fresh, ...patch };
+}
 
 export const emptyProfile = () => ({
   basics: {
@@ -203,6 +230,9 @@ const initialState = () => ({
   tailored: [],
   coverLetters: [],
   inspiration: [],
+  // Live code editor: html = your edited copy of the portfolio, active = use it instead of the generated page,
+  // fp = fingerprint of the design it was copied from (to warn when the design changes later)
+  code: { html: '', active: false, fp: '' },
   appTheme: 'dark',
 });
 
@@ -220,6 +250,7 @@ function load() {
       github: { ...base.github, ...saved.github },
       appTheme: saved.appThemeChosen ? saved.appTheme : 'dark',
       inspiration: saved.inspiration || [],
+      code: { ...base.code, ...saved.code },
     };
   } catch {
     return initialState();
@@ -236,6 +267,46 @@ export function normalizeDesign(d = {}) {
   return merged;
 }
 
+// ---------- design history (undo / redo / reset) ----------
+// Kept in memory only (not saved), so it survives moving between pages but not a page reload.
+const HISTORY_LIMIT = 60;
+const EMPTY_HISTORY = { past: [], future: [], lastKey: null, lastAt: 0, done: '' };
+const COALESCE_MS = 900; // typing, dragging a colour picker etc. count as ONE step
+
+const KEY_LABELS = {
+  layout: 'Theme', colorScheme: 'Colours', colors: 'Colours', accent: 'Accent', accentUse: 'Accent', mode: 'Light / dark', paper: 'Paper tone',
+  fontPair: 'Font', scale: 'Headline size', density: 'Spacing', radius: 'Corners', border: 'Borders', texture: 'Background texture',
+  headingCase: 'Heading case', sectionLabel: 'Section labels', heroStyle: 'Hero style', projectStyle: 'Projects display', nav: 'Navigation',
+  mark: 'Signature mark', seed: 'Variant', showAvatar: 'Photo', sectionOrder: 'Section order', hidden: 'Hidden sections',
+  hero3d: '3D object', hero3dPlace: '3D placement', modelUrl: '3D model', modelData: '3D model', modelMono: '3D model', embedUrl: '3D embed',
+  cursor: 'Cursor', tilt: 'Tilt cards', magnetic: 'Magnetic buttons', scramble: 'Name decode', preloader: 'Preloader', progress: 'Scroll progress',
+  grain: 'Film grain', motion: 'Motion', entrance: 'Hero entrance', revealStyle: 'Scroll reveal', titleAnim: 'Title animation', bgAnim: 'Background animation',
+  linkStyle: 'Link hover', cardHover: 'Card hover', parallax: 'Parallax', counters: 'Counters', heroImage: 'Hero image', heroImageMode: 'Hero image',
+  heroImageBlur: 'Hero image blur', threeSpeed: '3D speed', drag3d: 'Drag to rotate', clickFx: 'Click effect', textFill: 'Text fill', scrollSkew: 'Scroll skew', brief: 'Brief text', customCss: 'Custom CSS', liveRepos: 'Live GitHub stars',
+};
+function labelFor(keys) {
+  const names = [...new Set(keys.map((k) => KEY_LABELS[k] || k))];
+  return names.length > 2 ? 'Design' : names.join(' & ');
+}
+
+function recordDesign(state, next, label, force = false) {
+  if (!force && JSON.stringify(next) === JSON.stringify(state.design)) return state; // nothing changed
+  const h = state.history || EMPTY_HISTORY;
+  const now = Date.now();
+  const same = !force && h.lastKey === label && now - h.lastAt < COALESCE_MS && h.past.length;
+  return {
+    ...state,
+    design: next,
+    history: {
+      past: same ? h.past : [...h.past, { design: state.design, label }].slice(-HISTORY_LIMIT),
+      future: [],
+      lastKey: label,
+      lastAt: now,
+      done: '',
+    },
+  };
+}
+
 function reducer(state, action) {
   switch (action.type) {
     case 'profile/set':
@@ -244,10 +315,40 @@ function reducer(state, action) {
       return { ...state, profile: { ...state.profile, basics: { ...state.profile.basics, ...action.patch } } };
     case 'list/set':
       return { ...state, profile: { ...state.profile, [action.key]: action.items } };
-    case 'design/set':
-      return { ...state, design: normalizeDesign({ ...state.design, ...action.patch }) };
+    case 'design/set': {
+      const next = normalizeDesign({ ...state.design, ...action.patch });
+      return recordDesign(state, next, action.label || labelFor(Object.keys(action.patch)));
+    }
     case 'design/replace':
-      return { ...state, design: normalizeDesign(action.design) };
+      return recordDesign(state, normalizeDesign(action.design), action.label || 'Design');
+    case 'design/undo': {
+      const h = state.history || EMPTY_HISTORY;
+      if (!h.past.length) return state;
+      const prev = h.past[h.past.length - 1];
+      return {
+        ...state,
+        design: prev.design,
+        history: { past: h.past.slice(0, -1), future: [{ design: state.design, label: prev.label }, ...h.future].slice(0, HISTORY_LIMIT), lastKey: null, lastAt: 0, done: `Undid: ${prev.label}` },
+      };
+    }
+    case 'design/redo': {
+      const h = state.history || EMPTY_HISTORY;
+      if (!h.future.length) return state;
+      const next = h.future[0];
+      return {
+        ...state,
+        design: next.design,
+        history: { past: [...h.past, { design: state.design, label: next.label }].slice(-HISTORY_LIMIT), future: h.future.slice(1), lastKey: null, lastAt: 0, done: `Redid: ${next.label}` },
+      };
+    }
+    case 'design/reset': {
+      // 'theme': the CURRENT theme back to its original look (as when it was first picked),
+      //          keeping content-like settings (section order, hidden sections, brief, custom CSS, 3D model).
+      // 'all':   every design setting back to the defaults.
+      const key = THEMES[state.design.layout] ? state.design.layout : 'classic';
+      const next = action.scope === 'theme' ? normalizeDesign(withFreshLook(state.design, { layout: key, ...THEMES[key].preset })) : normalizeDesign({ ...DEFAULT_DESIGN });
+      return recordDesign(state, next, action.scope === 'theme' ? `Reset ${THEMES[key].name}` : 'Reset everything', true);
+    }
     case 'github/set':
       return { ...state, github: { ...state.github, ...action.patch } };
     case 'tailored/set':
@@ -256,6 +357,8 @@ function reducer(state, action) {
       return { ...state, coverLetters: action.items };
     case 'theme/toggle':
       return { ...state, appTheme: state.appTheme === 'light' ? 'dark' : 'light', appThemeChosen: true };
+    case 'code/set':
+      return { ...state, code: { ...(state.code || {}), ...action.patch } };
     case 'inspiration/set':
       return { ...state, inspiration: action.items };
     case 'all/replace':
@@ -275,7 +378,9 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     const t = setTimeout(() => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        // eslint-disable-next-line no-unused-vars
+        const { history, ...persisted } = state; // undo history stays in memory only
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
       } catch {
         // storage full or blocked — app keeps working in memory
       }
