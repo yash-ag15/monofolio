@@ -4,7 +4,7 @@ import CodeEditor from '../components/CodeEditor.jsx';
 import { AiBuildStatus, AiComposer, GrokBadge, useBuild, useGrokOn } from '../components/Grok.jsx';
 
 // "Code" tool: edit the full HTML of the current portfolio and watch the preview update live.
-export default function CodePanel({ generated, code, designFp, dispatch, toast, profile, full, onFull, themeName, onDownload }) {
+export default function CodePanel({ generated, code, designFp, dispatch, toast, profile, blankProfile, full, onFull, themeName, onDownload }) {
   const api = useRef(null);
   const timer = useRef(null);
   const [stats, setStats] = useState({ lines: 0, kb: 0 });
@@ -92,7 +92,7 @@ export default function CodePanel({ generated, code, designFp, dispatch, toast, 
               <GrokBadge />
             </div>
             <p className="hint">Ask the AI to change the {themeName || 'current'} theme you picked, or start a brand-new portfolio. Describe it, add an inspiration image (attach, drag in, or Ctrl+V), or both — you watch the code and the live preview update. Then keep asking for changes.</p>
-            <AiComposer profile={profile} code={code} dispatch={dispatch} toast={toast} getThemeHtml={() => generated} themeName={themeName} />
+            <AiComposer profile={profile} blankProfile={blankProfile} code={code} dispatch={dispatch} toast={toast} getThemeHtml={() => generated} themeName={themeName} />
             <AiBuildStatus dispatch={dispatch} toast={toast} />
           </div>
         )}
@@ -143,7 +143,7 @@ export default function CodePanel({ generated, code, designFp, dispatch, toast, 
       {!code.active && <div className="code-warn">Your code is saved but switched off — the preview shows the generated design. Turn on “Using my code” to see it.</div>}
       {aiOn && (
         <div className="code-ai">
-          <AiComposer profile={profile} code={code} dispatch={dispatch} toast={toast} compact />
+          <AiComposer profile={profile} blankProfile={blankProfile} code={code} dispatch={dispatch} toast={toast} compact />
           <AiBuildStatus dispatch={dispatch} toast={toast} compact />
         </div>
       )}

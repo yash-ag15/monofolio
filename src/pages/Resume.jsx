@@ -2,10 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store.jsx';
 import { Icon, ListEditor, Seg, Switch, Text, downloadFile, useToast } from '../components/ui.jsx';
 import { Pressable, Thumb } from '../components/Thumb.jsx';
-import { RESUME_SECTION_LABELS, demoResumeData, emptyResumeData, newResume, resumeDataFromProfile } from '../resume/model.js';
+import { RESUME_SECTION_LABELS, demoResumeData, emptyResumeData, isBlankResume, newResume, resumeDataFromProfile } from '../resume/model.js';
 import { RESUME_FONTS, RESUME_TEMPLATES, renderResumeHtml, renderResumeText } from '../resume/templates.js';
 import { resumeToLatex } from '../resume/latex.js';
 import { extractResumeLines, parseResumeLines } from '../resume/parse.js';
+
+// The sample resume's content appears as grey "e.g." hints in empty fields.
+const SAMPLE_DATA = demoResumeData();
+const eg = (v) => (v ? `e.g. ${v}` : undefined);
+const example = (key, i, field, fallback) => {
+  const list = SAMPLE_DATA[key] || [];
+  return eg(list.length ? list[i % list.length][field] : '') || fallback;
+};
 
 const TABS = [
   { id: 'content', label: 'Content', icon: 'file' },
@@ -40,10 +48,10 @@ export default function Resume({ go }) {
   const frame = useRef(null);
   const stage = useRef(null);
 
-  // first visit: create a resume with demo content
+  // first visit: start a resume from the user's Dev Identity (empty for a new account)
   useEffect(() => {
     if (!resumes.length) {
-      const r = newResume({ name: 'My Resume', data: demoResumeData() });
+      const r = newResume({ name: 'My Resume', data: resumeDataFromProfile(state.profile) });
       dispatch({ type: 'resumes/set', items: [r], active: r.id });
     }
   }, [resumes.length, dispatch]);
@@ -60,7 +68,10 @@ export default function Resume({ go }) {
   const setData = (patch) => update({ data: { ...resume.data, ...patch } });
   const setStyle = (patch) => update({ style: { ...resume.style, ...patch } });
 
-  const html = useMemo(() => (resume ? renderResumeHtml(resume) : ''), [resume]);
+  // while the resume is still empty, the preview and template thumbnails show the sample resume
+  const sample = !!resume && isBlankResume(resume.data);
+  const shown = useMemo(() => (resume && sample ? { ...resume, data: demoResumeData() } : resume), [resume, sample]);
+  const html = useMemo(() => (shown ? renderResumeHtml(shown) : ''), [shown]);
 
   // count pages, show only the needed page-break guides, and size the frame
   const measure = () => {
@@ -115,6 +126,13 @@ export default function Resume({ go }) {
 
   if (!resume) return null;
   const d = resume.data;
+  // downloads never contain the sample
+  const needContent = () => {
+    if (!sample) return false;
+    toast('Add your details first — the preview is only a sample');
+    setTab('content');
+    return true;
+  };
 
   // ---------- resume management ----------
   const addResume = (kind) => {
@@ -132,6 +150,8 @@ export default function Resume({ go }) {
 
   // ---------- downloads ----------
   const printPdf = () => {
+    if (needContent()) return;
+    dispatch({ type: 'milestone', key: 'resumeExported' });
     const f = document.createElement('iframe');
     f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(f);
@@ -194,13 +214,13 @@ export default function Resume({ go }) {
             <div className="resume-body">
               <Section id="header" open={open} setOpen={setOpen} hidden={resume.hidden} title="Header & contact">
                 <div className="grid-2">
-                  <Text className="span-2" label="Full name" value={d.header.name} onChange={(v) => setData({ header: { ...d.header, name: v } })} />
-                  <Text label="Phone" value={d.header.phone} onChange={(v) => setData({ header: { ...d.header, phone: v } })} />
-                  <Text label="Email" value={d.header.email} onChange={(v) => setData({ header: { ...d.header, email: v } })} />
-                  <Text label="LinkedIn" placeholder="linkedin.com/in/you" value={d.header.linkedin} onChange={(v) => setData({ header: { ...d.header, linkedin: v } })} />
-                  <Text label="GitHub" placeholder="github.com/you" value={d.header.github} onChange={(v) => setData({ header: { ...d.header, github: v } })} />
-                  <Text label="Website / portfolio" value={d.header.website} onChange={(v) => setData({ header: { ...d.header, website: v } })} />
-                  <Text label="Location (optional)" value={d.header.location} onChange={(v) => setData({ header: { ...d.header, location: v } })} />
+                  <Text placeholder={eg(SAMPLE_DATA.header.name)} className="span-2" label="Full name" value={d.header.name} onChange={(v) => setData({ header: { ...d.header, name: v } })} />
+                  <Text placeholder={eg(SAMPLE_DATA.header.phone)} label="Phone" value={d.header.phone} onChange={(v) => setData({ header: { ...d.header, phone: v } })} />
+                  <Text placeholder={eg(SAMPLE_DATA.header.email)} label="Email" value={d.header.email} onChange={(v) => setData({ header: { ...d.header, email: v } })} />
+                  <Text label="LinkedIn" placeholder="e.g. linkedin.com/in/your-name" value={d.header.linkedin} onChange={(v) => setData({ header: { ...d.header, linkedin: v } })} />
+                  <Text label="GitHub" placeholder="e.g. github.com/your-username" value={d.header.github} onChange={(v) => setData({ header: { ...d.header, github: v } })} />
+                  <Text placeholder={eg(SAMPLE_DATA.header.website)} label="Website / portfolio" value={d.header.website} onChange={(v) => setData({ header: { ...d.header, website: v } })} />
+                  <Text placeholder={eg(SAMPLE_DATA.header.location)} label="Location (optional)" value={d.header.location} onChange={(v) => setData({ header: { ...d.header, location: v } })} />
                 </div>
               </Section>
 
@@ -240,15 +260,15 @@ export default function Resume({ go }) {
                   title={(x) => x.school}
                   subtitle={(x) => x.degree}
                   addLabel="Add education"
-                  render={(x, set) => (
+                  render={(x, set, i) => (
                     <div className="grid-2">
-                      <Text className="span-2" label="School / college" value={x.school} onChange={(v) => set({ school: v })} />
-                      <Text className="span-2" label="Degree" value={x.degree} onChange={(v) => set({ degree: v })} placeholder="Bachelor of Technology in Computer Science" />
-                      <Text label="Start" value={x.start} onChange={(v) => set({ start: v })} placeholder="Aug 2023" />
-                      <Text label="End" value={x.end} onChange={(v) => set({ end: v })} placeholder="Expected May 2027" />
-                      <Text label="Location" value={x.location} onChange={(v) => set({ location: v })} />
-                      <Text label="Score" value={x.score} onChange={(v) => set({ score: v })} placeholder="CGPA: 8.9/10" />
-                      <Text className="span-2" label="Details (optional)" value={x.details} onChange={(v) => set({ details: v })} placeholder="Relevant coursework…" />
+                      <Text placeholder={example('education', i, 'school')} className="span-2" label="School / college" value={x.school} onChange={(v) => set({ school: v })} />
+                      <Text className="span-2" label="Degree" value={x.degree} onChange={(v) => set({ degree: v })} placeholder={example('education', i, 'degree', "Bachelor of Technology in Computer Science")} />
+                      <Text label="Start" value={x.start} onChange={(v) => set({ start: v })} placeholder={example('education', i, 'start', "Aug 2023")} />
+                      <Text label="End" value={x.end} onChange={(v) => set({ end: v })} placeholder={example('education', i, 'end', "Expected May 2027")} />
+                      <Text placeholder={example('education', i, 'location')} label="Location" value={x.location} onChange={(v) => set({ location: v })} />
+                      <Text label="Score" value={x.score} onChange={(v) => set({ score: v })} placeholder={example('education', i, 'score', "CGPA: 8.9/10")} />
+                      <Text className="span-2" label="Details (optional)" value={x.details} onChange={(v) => set({ details: v })} placeholder={example('education', i, 'details', "Relevant coursework…")} />
                     </div>
                   )}
                 />
@@ -263,15 +283,15 @@ export default function Resume({ go }) {
                   subtitle={(x) => x.role}
                   addLabel="Add experience"
                   emptyText="Internships, freelance, research, open source, club roles…"
-                  render={(x, set) => (
+                  render={(x, set, i) => (
                     <div className="grid-2">
-                      <Text label="Company / organisation" value={x.company} onChange={(v) => set({ company: v })} />
-                      <Text label="Role" value={x.role} onChange={(v) => set({ role: v })} />
-                      <Text label="Tech used" value={x.tech} onChange={(v) => set({ tech: v })} placeholder="AWS, Python, Golang" />
-                      <Text label="Location" value={x.location} onChange={(v) => set({ location: v })} />
-                      <Text label="Start" value={x.start} onChange={(v) => set({ start: v })} placeholder="May 2026" />
-                      <Text label="End" value={x.end} onChange={(v) => set({ end: v })} placeholder="Present" />
-                      <Text className="span-2" label="Bullet points" multiline rows={5} hint={BULLET_HINT} value={x.bullets} onChange={(v) => set({ bullets: v })} />
+                      <Text placeholder={example('experience', i, 'company')} label="Company / organisation" value={x.company} onChange={(v) => set({ company: v })} />
+                      <Text placeholder={example('experience', i, 'role')} label="Role" value={x.role} onChange={(v) => set({ role: v })} />
+                      <Text label="Tech used" value={x.tech} onChange={(v) => set({ tech: v })} placeholder={example('experience', i, 'tech', "AWS, Python, Golang")} />
+                      <Text placeholder={example('experience', i, 'location')} label="Location" value={x.location} onChange={(v) => set({ location: v })} />
+                      <Text label="Start" value={x.start} onChange={(v) => set({ start: v })} placeholder={example('experience', i, 'start', "May 2026")} />
+                      <Text label="End" value={x.end} onChange={(v) => set({ end: v })} placeholder={example('experience', i, 'end', "Present")} />
+                      <Text placeholder={example('experience', i, 'bullets')} className="span-2" label="Bullet points" multiline rows={5} hint={BULLET_HINT} value={x.bullets} onChange={(v) => set({ bullets: v })} />
                     </div>
                   )}
                 />
@@ -285,15 +305,15 @@ export default function Resume({ go }) {
                   title={(x) => x.name}
                   subtitle={(x) => x.tech}
                   addLabel="Add project"
-                  render={(x, set) => (
+                  render={(x, set, i) => (
                     <div className="grid-2">
-                      <Text label="Project name" value={x.name} onChange={(v) => set({ name: v })} />
-                      <Text label="Tech stack" value={x.tech} onChange={(v) => set({ tech: v })} />
-                      <Text label="Link" value={x.link} onChange={(v) => set({ link: v })} placeholder="https://" />
-                      <Text label="Link text" value={x.linkLabel} onChange={(v) => set({ linkLabel: v })} placeholder="View Project" />
-                      <Text label="Date (shown if no link)" value={x.date} onChange={(v) => set({ date: v })} />
+                      <Text placeholder={example('projects', i, 'name')} label="Project name" value={x.name} onChange={(v) => set({ name: v })} />
+                      <Text placeholder={example('projects', i, 'tech')} label="Tech stack" value={x.tech} onChange={(v) => set({ tech: v })} />
+                      <Text label="Link" value={x.link} onChange={(v) => set({ link: v })} placeholder={example('projects', i, 'link', "https://")} />
+                      <Text label="Link text" value={x.linkLabel} onChange={(v) => set({ linkLabel: v })} placeholder={example('projects', i, 'linkLabel', "View Project")} />
+                      <Text placeholder={example('projects', i, 'date')} label="Date (shown if no link)" value={x.date} onChange={(v) => set({ date: v })} />
                       <div />
-                      <Text className="span-2" label="Bullet points" multiline rows={4} hint={BULLET_HINT} value={x.bullets} onChange={(v) => set({ bullets: v })} />
+                      <Text placeholder={example('projects', i, 'bullets')} className="span-2" label="Bullet points" multiline rows={4} hint={BULLET_HINT} value={x.bullets} onChange={(v) => set({ bullets: v })} />
                     </div>
                   )}
                 />
@@ -307,10 +327,10 @@ export default function Resume({ go }) {
                   title={(x) => x.group}
                   subtitle={(x) => x.items}
                   addLabel="Add skill row"
-                  render={(x, set) => (
+                  render={(x, set, i) => (
                     <div className="grid-2">
-                      <Text label="Category" value={x.group} onChange={(v) => set({ group: v })} placeholder="Languages" />
-                      <Text label="Skills (comma separated)" value={x.items} onChange={(v) => set({ items: v })} />
+                      <Text label="Category" value={x.group} onChange={(v) => set({ group: v })} placeholder={example('skills', i, 'group', "Languages")} />
+                      <Text placeholder={example('skills', i, 'items')} label="Skills (comma separated)" value={x.items} onChange={(v) => set({ items: v })} />
                     </div>
                   )}
                 />
@@ -323,11 +343,11 @@ export default function Resume({ go }) {
                   blank={() => ({ text: '', link: '', linkLabel: 'View' })}
                   title={(x) => x.text}
                   addLabel="Add achievement"
-                  render={(x, set) => (
+                  render={(x, set, i) => (
                     <div className="grid-2">
-                      <Text className="span-2" label="Achievement" value={x.text} onChange={(v) => set({ text: v })} />
-                      <Text label="Link (optional)" value={x.link} onChange={(v) => set({ link: v })} />
-                      <Text label="Link text" value={x.linkLabel} onChange={(v) => set({ linkLabel: v })} placeholder="View Post" />
+                      <Text placeholder={example('achievements', i, 'text')} className="span-2" label="Achievement" value={x.text} onChange={(v) => set({ text: v })} />
+                      <Text placeholder={example('achievements', i, 'link')} label="Link (optional)" value={x.link} onChange={(v) => set({ link: v })} />
+                      <Text label="Link text" value={x.linkLabel} onChange={(v) => set({ linkLabel: v })} placeholder={example('achievements', i, 'linkLabel', "View Post")} />
                     </div>
                   )}
                 />
@@ -341,12 +361,12 @@ export default function Resume({ go }) {
                   title={(x) => x.name}
                   subtitle={(x) => x.issuer}
                   addLabel="Add certification"
-                  render={(x, set) => (
+                  render={(x, set, i) => (
                     <div className="grid-2">
-                      <Text label="Name" value={x.name} onChange={(v) => set({ name: v })} />
-                      <Text label="Issuer" value={x.issuer} onChange={(v) => set({ issuer: v })} />
-                      <Text label="Date" value={x.date} onChange={(v) => set({ date: v })} />
-                      <Text label="Credential link" value={x.link} onChange={(v) => set({ link: v })} />
+                      <Text placeholder={example('certifications', i, 'name')} label="Name" value={x.name} onChange={(v) => set({ name: v })} />
+                      <Text placeholder={example('certifications', i, 'issuer')} label="Issuer" value={x.issuer} onChange={(v) => set({ issuer: v })} />
+                      <Text placeholder={example('certifications', i, 'date')} label="Date" value={x.date} onChange={(v) => set({ date: v })} />
+                      <Text placeholder={example('certifications', i, 'link')} label="Credential link" value={x.link} onChange={(v) => set({ link: v })} />
                     </div>
                   )}
                 />
@@ -360,10 +380,10 @@ export default function Resume({ go }) {
                   title={(x) => x.title}
                   addLabel="Add custom section"
                   emptyText="Positions of Responsibility, Publications, Volunteering, Extracurriculars…"
-                  render={(x, set) => (
+                  render={(x, set, i) => (
                     <div className="stack">
-                      <Text label="Section title" value={x.title} onChange={(v) => set({ title: v })} placeholder="Positions of Responsibility" />
-                      <Text label="Content" multiline rows={4} hint="Lines starting with “- ” become bullets." value={x.content} onChange={(v) => set({ content: v })} />
+                      <Text label="Section title" value={x.title} onChange={(v) => set({ title: v })} placeholder={example('custom', i, 'title', "Positions of Responsibility")} />
+                      <Text placeholder={example('custom', i, 'content')} label="Content" multiline rows={4} hint="Lines starting with “- ” become bullets." value={x.content} onChange={(v) => set({ content: v })} />
                     </div>
                   )}
                 />
@@ -377,7 +397,7 @@ export default function Resume({ go }) {
               <div className="tpl-grid">
                 {Object.entries(RESUME_TEMPLATES).map(([k, t]) => (
                   <Pressable key={k} className={`tpl-card ${resume.style.template === k ? 'on' : ''}`} label={`Use ${t.name}`} onActivate={() => setStyle({ template: k, font: t.font, fontSize: t.size })}>
-                    <Thumb html={renderResumeHtml({ ...resume, style: { ...resume.style, template: k, font: t.font, fontSize: t.size } }, { forPrint: true })} scale={0.2} height={150} width={830} eager />
+                    <Thumb html={renderResumeHtml({ ...shown, style: { ...resume.style, template: k, font: t.font, fontSize: t.size } }, { forPrint: true })} scale={0.2} height={150} width={830} eager />
                     <div className="tpl-meta">
                       <b>{t.name}</b>
                       <span className={`ats ats-${t.ats.toLowerCase()}`}>ATS: {t.ats}</span>
@@ -444,19 +464,32 @@ export default function Resume({ go }) {
             )}
             <Seg value={zoom} onChange={setZoom} options={[{ value: 'fit', label: 'Fit' }, { value: '1', label: '100%' }]} />
             <span className="spacer" />
-            <button className="btn ghost sm" onClick={() => downloadFile(`${base}.tex`, resumeToLatex(resume), 'application/x-tex')} title="LaTeX source (Jake's Resume format) for Overleaf">
+            <button className="btn ghost sm" onClick={() => {
+              if (needContent()) return;
+              dispatch({ type: 'milestone', key: 'resumeExported' });
+              downloadFile(`${base}.tex`, resumeToLatex(resume), 'application/x-tex');
+            }} title="LaTeX source (Jake's Resume format) for Overleaf">
               .tex
             </button>
-            <button className="btn ghost sm" onClick={() => downloadFile(`${base}.txt`, renderResumeText(resume))} title="Plain text — exactly what an ATS reads">
+            <button className="btn ghost sm" onClick={() => {
+              if (needContent()) return;
+              dispatch({ type: 'milestone', key: 'resumeExported' });
+              downloadFile(`${base}.txt`, renderResumeText(resume));
+            }} title="Plain text — exactly what an ATS reads">
               .txt
             </button>
-            <button className="btn ghost sm" onClick={() => downloadFile(`${base}.json`, JSON.stringify(resume, null, 2), 'application/json')}>
+            <button className="btn ghost sm" onClick={() => !needContent() && downloadFile(`${base}.json`, JSON.stringify(resume, null, 2), 'application/json')}>
               .json
             </button>
             <button className="btn sm" onClick={printPdf}>
               <Icon name="download" /> PDF
             </button>
           </div>
+          {sample && (
+            <div className="sample-strip">
+              <Icon name="eye" size={14} /> <span>This is a <b>sample</b> so you can see the template. Fill in your details on the left and they’ll replace it.</span>
+            </div>
+          )}
           <div className="resume-stage" ref={stage}>
             <div className="resume-sheet" style={{ width: dims.w * scale, height: dims.h * scale }}>
               <iframe ref={frame} className="resume-frame" title="Resume preview" srcDoc={html} onLoad={onFrameLoad} sandbox="allow-same-origin" style={{ width: dims.w, height: dims.h, transform: `scale(${scale})` }} />

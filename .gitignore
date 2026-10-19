@@ -1,4 +1,10 @@
 node_modules
 dist
+.next
+next-env.d.ts
+# copied from node_modules on dev/build
+public/pdf.worker.min.mjs
 .env.local
 .env.*.local
+# user accounts and saved data
+data/

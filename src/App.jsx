@@ -14,6 +14,10 @@ import Cover from './pages/Cover.jsx';
 import Card from './pages/Card.jsx';
 import { useAutoSync } from './lib/github.js';
 import { NAV } from './nav.js';
+import { useAccount, useSyncStatus } from './lib/account.jsx';
+
+const SYNC_TEXT = { saved: 'Saved', saving: 'Saving…', offline: 'Offline', 'too-large': 'Not saved' };
+const SYNC_TITLE = { saved: 'All changes are saved to your account', saving: 'Saving your changes…', offline: 'Can’t reach the server — your changes will be saved when you’re back online', 'too-large': 'Your data is too large to save — remove big images or 3D models' };
 
 
 
@@ -34,6 +38,8 @@ export default function App() {
   const { state, dispatch } = useStore();
   const [route, go] = useHashRoute();
   const [menu, setMenu] = useState(false);
+  const { user, signOut } = useAccount();
+  const sync = useSyncStatus();
   useAutoSync();
 
   const current = ALL.find((i) => i.id === route) || ALL[0];
@@ -102,12 +108,21 @@ export default function App() {
             ))}
           </div>
         ))}
-        <div className="side-foot">
-          <span className="live" />
-          <span>Saved on this device</span>
-          <span className="spacer" />
+        <div className="side-foot side-user">
+          <span className="side-avatar" aria-hidden="true">
+            {user?.avatar ? <img src={user.avatar} alt="" referrerPolicy="no-referrer" /> : (user?.name || user?.email || '?').trim().charAt(0).toUpperCase()}
+          </span>
+          <div className="side-who">
+            <b title={user?.email}>{user?.demo ? 'Demo account' : user?.name || user?.email}</b>
+            <span className={`side-sync ${sync}`} title={SYNC_TITLE[sync]}>
+              <i /> {SYNC_TEXT[sync] || SYNC_TEXT.saved}
+            </span>
+          </div>
           <button className="btn ghost icon" title="Toggle theme" onClick={() => dispatch({ type: 'theme/toggle' })}>
             <Icon name={state.appTheme === 'light' ? 'moon' : 'sun'} />
+          </button>
+          <button className="btn ghost icon" title="Sign out" onClick={() => confirm('Sign out of Monofolio?') && signOut()}>
+            <Icon name="logout" />
           </button>
         </div>
       </aside>

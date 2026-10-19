@@ -1,7 +1,15 @@
 import { useState } from 'react';
-import { useStore } from '../store.jsx';
+import { isBlankProfile, sampleProfile, useStore } from '../store.jsx';
 import { Icon, ListEditor, Switch, Text, useToast } from '../components/ui.jsx';
 import { initials } from '../portfolio/render.js';
+
+// The sample person's details appear as grey "e.g." hints, never as real data.
+const SAMPLE = sampleProfile();
+const eg = (v) => (v ? `e.g. ${v}` : undefined);
+const example = (key, i, field, fallback) => {
+  const list = SAMPLE[key] || [];
+  return eg(list.length ? list[i % list.length][field] : '') || fallback;
+};
 
 const TABS = [
   { id: 'basics', label: 'Basics' },
@@ -98,6 +106,15 @@ export default function Profile({ go }) {
         </button>
       </div>
 
+      {isBlankProfile(p) && (
+        <div className="sample-strip profile-start">
+          <Icon name="sparkle" size={14} />
+          <span>
+            <b>Start here.</b> Grey “e.g.” text is just an example — type your own details over it. Everything else in the app fills itself in from this page.
+          </span>
+        </div>
+      )}
+
       <div className="tabs" role="tablist">
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
@@ -110,16 +127,16 @@ export default function Profile({ go }) {
       {tab === 'basics' && (
         <div className="card card-pad">
           <div className="grid-2">
-            <Text label="Full name" value={b.name} onChange={(v) => setB({ name: v })} placeholder="Mugiwara Luffy" />
-            <Text label="Headline" value={b.headline} onChange={(v) => setB({ headline: v })} placeholder="Full-Stack Developer · CS Undergrad" />
-            <Text className="span-2" label="Tagline" hint="One sentence that captures what you do. Used as the statement in some hero styles." value={b.tagline} onChange={(v) => setB({ tagline: v })} />
-            <Text className="span-2" label="About" multiline rows={6} hint="Separate paragraphs with a blank line. Lines starting with “- ” become bullets." value={b.about} onChange={(v) => setB({ about: v })} />
-            <Text label="Email" type="email" value={b.email} onChange={(v) => setB({ email: v })} />
-            <Text label="Phone" value={b.phone} onChange={(v) => setB({ phone: v })} />
-            <Text label="Location" value={b.location} onChange={(v) => setB({ location: v })} placeholder="City, Country" />
-            <Text label="Website" value={b.website} onChange={(v) => setB({ website: v })} placeholder="https://" />
-            <Text label="Availability" hint="e.g. Open to internships — Summer 2027" value={b.availability} onChange={(v) => setB({ availability: v })} />
-            <Text label="Résumé link" hint="Public link to your PDF (Drive, etc.)" value={b.resumeUrl} onChange={(v) => setB({ resumeUrl: v })} />
+            <Text label="Full name" value={b.name} onChange={(v) => setB({ name: v })} placeholder={eg(SAMPLE.basics.name) || "Mugiwara Luffy"} />
+            <Text label="Headline" value={b.headline} onChange={(v) => setB({ headline: v })} placeholder={eg(SAMPLE.basics.headline) || "Full-Stack Developer · CS Undergrad"} />
+            <Text placeholder={eg(SAMPLE.basics.tagline)} className="span-2" label="Tagline" hint="One sentence that captures what you do. Used as the statement in some hero styles." value={b.tagline} onChange={(v) => setB({ tagline: v })} />
+            <Text placeholder={eg(SAMPLE.basics.about)} className="span-2" label="About" multiline rows={6} hint="Separate paragraphs with a blank line. Lines starting with “- ” become bullets." value={b.about} onChange={(v) => setB({ about: v })} />
+            <Text placeholder={eg(SAMPLE.basics.email)} label="Email" type="email" value={b.email} onChange={(v) => setB({ email: v })} />
+            <Text placeholder={eg(SAMPLE.basics.phone)} label="Phone" value={b.phone} onChange={(v) => setB({ phone: v })} />
+            <Text label="Location" value={b.location} onChange={(v) => setB({ location: v })} placeholder={eg(SAMPLE.basics.location) || "City, Country"} />
+            <Text label="Website" value={b.website} onChange={(v) => setB({ website: v })} placeholder={eg(SAMPLE.basics.website) || "https://"} />
+            <Text placeholder={eg(SAMPLE.basics.availability)} label="Availability" hint="e.g. Open to internships — Summer 2027" value={b.availability} onChange={(v) => setB({ availability: v })} />
+            <Text placeholder={eg(SAMPLE.basics.resumeUrl)} label="Résumé link" hint="Public link to your PDF (Drive, etc.)" value={b.resumeUrl} onChange={(v) => setB({ resumeUrl: v })} />
             <ImageInput label="Photo (shown in grayscale)" value={b.avatar} onChange={(v) => setB({ avatar: v })} max={480} fallback={initials(b.name)} />
           </div>
         </div>
@@ -147,8 +164,8 @@ export default function Profile({ go }) {
             emptyText="Add GitHub, LinkedIn, coding profiles, blogs…"
             render={(s, set) => (
               <div className="grid-2">
-                <Text label="Label" value={s.label} onChange={(v) => set({ label: v })} />
-                <Text label="URL" value={s.url} onChange={(v) => set({ url: v })} placeholder="https://" />
+                <Text label="Label" placeholder="e.g. GitHub" value={s.label} onChange={(v) => set({ label: v })} />
+                <Text label="URL" value={s.url} onChange={(v) => set({ url: v })} placeholder="e.g. https://github.com/your-username" />
               </div>
             )}
           />
@@ -164,10 +181,10 @@ export default function Profile({ go }) {
           subtitle={(s) => s.items}
           addLabel="Add skill group"
           emptyText="Group your skills: Languages, Frontend, Backend, Tools…"
-          render={(s, set) => (
+          render={(s, set, i) => (
             <div className="grid-2">
-              <Text label="Group" value={s.group} onChange={(v) => set({ group: v })} placeholder="Languages" />
-              <Text label="Skills (comma separated)" value={s.items} onChange={(v) => set({ items: v })} placeholder="Python, Java, C++" />
+              <Text label="Group" value={s.group} onChange={(v) => set({ group: v })} placeholder={example('skills', i, 'group', "Languages")} />
+              <Text label="Skills (comma separated)" value={s.items} onChange={(v) => set({ items: v })} placeholder={example('skills', i, 'items', "Python, Java, C++")} />
             </div>
           )}
         />
@@ -190,14 +207,14 @@ export default function Profile({ go }) {
             subtitle={(x) => [x.highlight && '★ featured', x.source === 'github' && 'from GitHub', x.tech].filter(Boolean).join(' · ')}
             addLabel="Add project"
             emptyText="Projects are the most important part of a student portfolio. Add 3–6 of your best."
-            render={(x, set) => (
+            render={(x, set, i) => (
               <div className="grid-2">
-                <Text label="Name" value={x.name} onChange={(v) => set({ name: v })} />
-                <Text label="Tech used" value={x.tech} onChange={(v) => set({ tech: v })} placeholder="React, Node.js" />
-                <Text className="span-2" label="Short description" value={x.description} onChange={(v) => set({ description: v })} />
-                <Text className="span-2" label="Highlights (one per line)" hint="Results and numbers impress recruiters: users, speed-ups, downloads, awards." multiline rows={3} value={x.bullets} onChange={(v) => set({ bullets: v })} />
-                <Text label="Live link" value={x.link} onChange={(v) => set({ link: v })} placeholder="https://" />
-                <Text label="Repository" value={x.repo} onChange={(v) => set({ repo: v })} placeholder="https://github.com/you/repo" />
+                <Text placeholder={example('projects', i, 'name')} label="Name" value={x.name} onChange={(v) => set({ name: v })} />
+                <Text label="Tech used" value={x.tech} onChange={(v) => set({ tech: v })} placeholder={example('projects', i, 'tech', "React, Node.js")} />
+                <Text placeholder={example('projects', i, 'description')} className="span-2" label="Short description" value={x.description} onChange={(v) => set({ description: v })} />
+                <Text placeholder={example('projects', i, 'bullets')} className="span-2" label="Highlights (one per line)" hint="Results and numbers impress recruiters: users, speed-ups, downloads, awards." multiline rows={3} value={x.bullets} onChange={(v) => set({ bullets: v })} />
+                <Text label="Live link" value={x.link} onChange={(v) => set({ link: v })} placeholder={example('projects', i, 'link', "https://")} />
+                <Text label="Repository" value={x.repo} onChange={(v) => set({ repo: v })} placeholder={example('projects', i, 'repo', "https://github.com/you/repo")} />
                 <ImageInput label="Screenshot (optional)" value={x.image} onChange={(v) => set({ image: v })} max={960} fallback="IMG" />
                 <div className="field" style={{ justifyContent: 'center' }}>
                   <Switch checked={x.highlight} onChange={(v) => set({ highlight: v })} label="Featured project (shown first)" />
@@ -217,15 +234,15 @@ export default function Profile({ go }) {
           subtitle={(x) => x.company}
           addLabel="Add experience"
           emptyText="Internships, freelance work, research, open-source, club roles…"
-          render={(x, set) => (
+          render={(x, set, i) => (
             <div className="grid-2">
-              <Text label="Role" value={x.role} onChange={(v) => set({ role: v })} />
-              <Text label="Company / Organisation" value={x.company} onChange={(v) => set({ company: v })} />
-              <Text label="Start" value={x.start} onChange={(v) => set({ start: v })} placeholder="May 2026" />
-              <Text label="End" value={x.end} onChange={(v) => set({ end: v })} placeholder="Present" />
-              <Text label="Location" value={x.location} onChange={(v) => set({ location: v })} placeholder="Remote" />
-              <Text label="Tech" value={x.tech} onChange={(v) => set({ tech: v })} />
-              <Text className="span-2" label="What you did (one per line)" multiline rows={4} value={x.bullets} onChange={(v) => set({ bullets: v })} />
+              <Text placeholder={example('experience', i, 'role')} label="Role" value={x.role} onChange={(v) => set({ role: v })} />
+              <Text placeholder={example('experience', i, 'company')} label="Company / Organisation" value={x.company} onChange={(v) => set({ company: v })} />
+              <Text label="Start" value={x.start} onChange={(v) => set({ start: v })} placeholder={example('experience', i, 'start', "May 2026")} />
+              <Text label="End" value={x.end} onChange={(v) => set({ end: v })} placeholder={example('experience', i, 'end', "Present")} />
+              <Text label="Location" value={x.location} onChange={(v) => set({ location: v })} placeholder={example('experience', i, 'location', "Remote")} />
+              <Text placeholder={example('experience', i, 'tech')} label="Tech" value={x.tech} onChange={(v) => set({ tech: v })} />
+              <Text placeholder={example('experience', i, 'bullets')} className="span-2" label="What you did (one per line)" multiline rows={4} value={x.bullets} onChange={(v) => set({ bullets: v })} />
             </div>
           )}
         />
@@ -239,14 +256,14 @@ export default function Profile({ go }) {
           title={(x) => x.degree}
           subtitle={(x) => x.school}
           addLabel="Add education"
-          render={(x, set) => (
+          render={(x, set, i) => (
             <div className="grid-2">
-              <Text label="Degree" value={x.degree} onChange={(v) => set({ degree: v })} placeholder="B.Tech in Computer Science" />
-              <Text label="School / College" value={x.school} onChange={(v) => set({ school: v })} />
-              <Text label="Start" value={x.start} onChange={(v) => set({ start: v })} />
-              <Text label="End" value={x.end} onChange={(v) => set({ end: v })} placeholder="2027 (expected)" />
-              <Text label="Score" value={x.score} onChange={(v) => set({ score: v })} placeholder="CGPA 8.9 / 10" />
-              <Text label="Details" value={x.details} onChange={(v) => set({ details: v })} placeholder="Relevant coursework, thesis…" />
+              <Text label="Degree" value={x.degree} onChange={(v) => set({ degree: v })} placeholder={example('education', i, 'degree', "B.Tech in Computer Science")} />
+              <Text placeholder={example('education', i, 'school')} label="School / College" value={x.school} onChange={(v) => set({ school: v })} />
+              <Text placeholder={example('education', i, 'start')} label="Start" value={x.start} onChange={(v) => set({ start: v })} />
+              <Text label="End" value={x.end} onChange={(v) => set({ end: v })} placeholder={example('education', i, 'end', "2027 (expected)")} />
+              <Text label="Score" value={x.score} onChange={(v) => set({ score: v })} placeholder={example('education', i, 'score', "CGPA 8.9 / 10")} />
+              <Text label="Details" value={x.details} onChange={(v) => set({ details: v })} placeholder={example('education', i, 'details', "Relevant coursework, thesis…")} />
             </div>
           )}
         />
@@ -260,12 +277,12 @@ export default function Profile({ go }) {
           title={(x) => x.name}
           subtitle={(x) => x.issuer}
           addLabel="Add certification"
-          render={(x, set) => (
+          render={(x, set, i) => (
             <div className="grid-2">
-              <Text label="Name" value={x.name} onChange={(v) => set({ name: v })} />
-              <Text label="Issuer" value={x.issuer} onChange={(v) => set({ issuer: v })} />
-              <Text label="Date" value={x.date} onChange={(v) => set({ date: v })} />
-              <Text label="Credential link" value={x.link} onChange={(v) => set({ link: v })} />
+              <Text placeholder={example('certifications', i, 'name')} label="Name" value={x.name} onChange={(v) => set({ name: v })} />
+              <Text placeholder={example('certifications', i, 'issuer')} label="Issuer" value={x.issuer} onChange={(v) => set({ issuer: v })} />
+              <Text placeholder={example('certifications', i, 'date')} label="Date" value={x.date} onChange={(v) => set({ date: v })} />
+              <Text placeholder={example('certifications', i, 'link')} label="Credential link" value={x.link} onChange={(v) => set({ link: v })} />
             </div>
           )}
         />
@@ -280,10 +297,10 @@ export default function Profile({ go }) {
           subtitle={(x) => x.detail}
           addLabel="Add achievement"
           emptyText="Hackathons, competitive programming ranks, scholarships, leadership…"
-          render={(x, set) => (
+          render={(x, set, i) => (
             <div className="grid-2">
-              <Text label="Title" value={x.title} onChange={(v) => set({ title: v })} />
-              <Text label="Detail" value={x.detail} onChange={(v) => set({ detail: v })} />
+              <Text placeholder={example('achievements', i, 'title')} label="Title" value={x.title} onChange={(v) => set({ title: v })} />
+              <Text placeholder={example('achievements', i, 'detail')} label="Detail" value={x.detail} onChange={(v) => set({ detail: v })} />
             </div>
           )}
         />
@@ -297,10 +314,10 @@ export default function Profile({ go }) {
           title={(x) => x.title}
           addLabel="Add custom section"
           emptyText="Anything else that makes you, you: Blog posts, Talks, Open source, Research, Volunteering, Now, Hobbies…"
-          render={(x, set) => (
+          render={(x, set, i) => (
             <div className="stack">
-              <Text label="Section title" value={x.title} onChange={(v) => set({ title: v })} placeholder="Open Source" />
-              <Text label="Content" hint="Blank line = new paragraph. Lines starting with “- ” become bullets." multiline rows={6} value={x.content} onChange={(v) => set({ content: v })} />
+              <Text label="Section title" value={x.title} onChange={(v) => set({ title: v })} placeholder={example('custom', i, 'title', "Open Source")} />
+              <Text placeholder={example('custom', i, 'content')} label="Content" hint="Blank line = new paragraph. Lines starting with “- ” become bullets." multiline rows={6} value={x.content} onChange={(v) => set({ content: v })} />
             </div>
           )}
         />

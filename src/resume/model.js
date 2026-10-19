@@ -48,11 +48,11 @@ export const demoResumeData = () => ({
     linkedin: 'linkedin.com',
     github: 'github.com',
     website: '',
-    location: 'Pune, India',
+    location: 'Indore, India',
   },
   summary: '',
   education: [
-    { school: 'Pune Institute of Technology', degree: 'Bachelor of Technology in Computer Science', start: 'Aug 2023', end: 'Expected May 2027', location: 'Pune, Maharashtra', score: 'CGPA: 8.9/10', details: 'Coursework: Data Structures, Operating Systems, DBMS, Computer Networks' },
+    { school: 'Indore Institute of Technology', degree: 'Bachelor of Technology in Computer Science', start: 'Aug 2023', end: 'Expected May 2027', location: 'Indore, Madhya Pradesh', score: 'CGPA: 8.9/10', details: 'Coursework: Data Structures, Operating Systems, DBMS, Computer Networks' },
   ],
   experience: [
     {
@@ -112,6 +112,12 @@ export function resumeDataFromProfile(p) {
     certifications: (p.certifications || []).map((c) => ({ ...c })),
     custom: (p.custom || []).map((c) => ({ title: c.title, content: c.content })),
   };
+}
+
+// Is this resume still empty? (Then the preview shows the sample resume.)
+export function isBlankResume(d) {
+  const h = d?.header || {};
+  return !Object.values(h).some((v) => String(v || '').trim()) && !String(d?.summary || '').trim() && !RESUME_SECTIONS.some((k) => k !== 'summary' && (d?.[k] || []).length);
 }
 
 export function newResume({ name = 'My Resume', data, style } = {}) {

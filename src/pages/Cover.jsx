@@ -93,6 +93,7 @@ export default function Cover({ go }) {
     setActiveId(items[0]?.id || '');
   };
   const printPdf = () => {
+    dispatch({ type: 'milestone', key: 'coverMade' });
     const f = document.createElement('iframe');
     f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
     document.body.appendChild(f);
@@ -109,6 +110,7 @@ export default function Cover({ go }) {
     toast('Choose “Save as PDF” in the print dialog');
   };
   const copy = async () => {
+    dispatch({ type: 'milestone', key: 'coverMade' });
     try {
       await navigator.clipboard.writeText(letterText(view, facts));
       toast('Copied — paste it into an email or application form');
@@ -251,7 +253,10 @@ export default function Cover({ go }) {
             <button className="btn ghost sm" onClick={copy}>
               <Icon name="copy" /> Copy
             </button>
-            <button className="btn ghost sm" onClick={() => downloadFile(`${base}.txt`, letterText(view, facts))}>
+            <button className="btn ghost sm" onClick={() => {
+                dispatch({ type: 'milestone', key: 'coverMade' });
+                downloadFile(`${base}.txt`, letterText(view, facts));
+              }}>
               .txt
             </button>
             <button className="btn sm" onClick={printPdf}>

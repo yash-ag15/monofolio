@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { marked } from 'marked';
-import { useStore } from '../store.jsx';
+import { isBlankProfile, previewProfile, useStore } from '../store.jsx';
 import { Icon, Seg, Switch, downloadFile, useToast } from '../components/ui.jsx';
 import { CARD_THEMES, DEFAULT_OPTS, README_TEMPLATES, SNAKE_WORKFLOW, buildReadme } from '../readme/templates.js';
 
@@ -69,7 +69,7 @@ export default function Readme({ go }) {
   const setOpt = (patch) => set({ opts: { ...r.opts, ...patch } });
   const setShow = (k, v) => setOpt({ show: { ...opts.show, [k]: v } });
 
-  const generated = useMemo(() => buildReadme(r.template, state.profile, state.github, opts), [r.template, state.profile, state.github, JSON.stringify(r.opts)]); // eslint-disable-line react-hooks/exhaustive-deps
+  const generated = useMemo(() => buildReadme(r.template, previewProfile(state.profile), state.github, opts), [r.template, state.profile, state.github, JSON.stringify(r.opts)]); // eslint-disable-line react-hooks/exhaustive-deps
   const md = r.edited ? r.md : generated;
   const username = (opts.username || state.github?.username || (state.profile.socials || []).find((s) => /github\.com\//i.test(s.url))?.url?.match(/github\.com\/([^/?#]+)/i)?.[1] || '').trim();
   const doc = useMemo(() => previewDoc(md, dark, username), [md, dark, username]);
@@ -83,10 +83,20 @@ export default function Readme({ go }) {
     if (!confirm('Rebuild the README from the template and options? Your hand edits will be replaced.')) return;
     set({ edited: false, md: '' });
   };
+  // a README typed by hand is the user's own, even before they fill in Dev Identity
+  const blankProfile = isBlankProfile(state.profile) && !r.edited;
+  // downloads never contain the sample person
+  const needProfile = () => {
+    if (!blankProfile) return false;
+    toast('Add your details in Dev Identity first — this README is only a sample');
+    return true;
+  };
   const copy = async () => {
+    if (needProfile()) return;
     try {
       await navigator.clipboard.writeText(md);
       toast('README copied — paste it into README.md in your profile repo');
+      dispatch({ type: 'milestone', key: 'readmeMade' });
     } catch {
       toast('Couldn’t copy — use Download instead');
     }
@@ -205,6 +215,14 @@ export default function Readme({ go }) {
         </aside>
 
         <section className="readme-main">
+          {blankProfile && (
+            <div className="sample-strip">
+              <Icon name="eye" size={14} /> <span>This README shows a <b>sample</b> person until you add your details.</span>
+              <button className="btn secondary sm" onClick={() => go('profile')}>
+                Add your details
+              </button>
+            </div>
+          )}
           <div className="preview-bar readme-bar">
             <b className="small">{template.name}</b>
             {r.edited ? (
@@ -222,7 +240,11 @@ export default function Readme({ go }) {
             <button className="btn ghost sm" onClick={copy}>
               <Icon name="copy" /> Copy
             </button>
-            <button className="btn sm" onClick={() => downloadFile('README.md', md, 'text/markdown')}>
+            <button className="btn sm" onClick={() => {
+                if (needProfile()) return;
+                dispatch({ type: 'milestone', key: 'readmeMade' });
+                downloadFile('README.md', md, 'text/markdown');
+              }}>
               <Icon name="download" /> README.md
             </button>
           </div>

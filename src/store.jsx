@@ -1,7 +1,6 @@
-import { createContext, useContext, useEffect, useReducer } from 'react';
+import { createContext, useContext, useEffect, useReducer, useRef } from 'react';
 import { THEMES } from './portfolio/themes.js';
 
-const STORAGE_KEY = 'monofolio:v1';
 
 export const SECTION_KEYS = [
   'about',
@@ -135,7 +134,7 @@ export const sampleProfile = () => ({
     name: 'Mugiwara Luffy',
     headline: 'Full-Stack Developer · CS Undergrad',
     tagline: 'I build fast, accessible web apps and tinker with developer tooling.',
-    location: 'Pune, India',
+    location: 'Indore, India',
     email: 'luffy@example.com',
     phone: '+91 98765 43210',
     website: '',
@@ -169,7 +168,7 @@ export const sampleProfile = () => ({
   ],
   education: [
     {
-      school: 'Pune Institute of Technology',
+      school: 'Indore Institute of Technology',
       degree: 'B.Tech in Computer Science',
       start: '2023',
       end: '2027',
@@ -222,8 +221,10 @@ export const sampleProfile = () => ({
   custom: [],
 });
 
+// New accounts start empty. The sample person (Mugiwara Luffy) only appears as placeholder text in
+// forms and in previews while there is nothing of your own yet — see previewProfile().
 const initialState = () => ({
-  profile: sampleProfile(),
+  profile: emptyProfile(),
   design: { ...DEFAULT_DESIGN },
   github: { username: '', autoSync: false, lastSync: 0, user: null, repos: [] },
   tailored: [],
@@ -238,6 +239,8 @@ const initialState = () => ({
   readme: { template: 'classic', opts: {}, md: '', edited: false },
   // Dev profile card: design, size and options
   card: { design: 'minimal', size: 'card', opts: {} },
+  // things the user has done at least once (for the dashboard journey)
+  milestones: {},
   appTheme: 'dark',
 });
 
@@ -270,18 +273,17 @@ function migrateDemo(raw) {
     // the old demo also had an X account — drop that social link entirely
     if (s.profile?.socials) s.profile.socials = s.profile.socials.filter((x) => x.url !== 'https://x.com');
     out = JSON.stringify(s);
-    localStorage.setItem(STORAGE_KEY, out);
   } catch {
     return raw;
   }
   return out;
 }
 
-function load() {
+// Turns saved data (from the account, or a backup file) into a complete, current-shape state.
+export function hydrate(savedState) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return initialState();
-    const saved = JSON.parse(migrateDemo(raw));
+    if (!savedState) return initialState();
+    const saved = JSON.parse(migrateDemo(JSON.stringify(savedState)));
     const base = initialState();
     return {
       ...base,
@@ -296,6 +298,7 @@ function load() {
       activeResume: saved.activeResume || '',
       readme: { ...base.readme, ...saved.readme },
       card: { ...base.card, ...saved.card },
+      milestones: { ...base.milestones, ...saved.milestones },
     };
   } catch {
     return initialState();
@@ -402,6 +405,8 @@ function reducer(state, action) {
       return { ...state, coverLetters: action.items };
     case 'theme/toggle':
       return { ...state, appTheme: state.appTheme === 'light' ? 'dark' : 'light', appThemeChosen: true };
+    case 'milestone':
+      return state.milestones?.[action.key] ? state : { ...state, milestones: { ...(state.milestones || {}), [action.key]: Date.now() } };
     case 'card/set':
       return { ...state, card: { ...(state.card || {}), ...action.patch } };
     case 'readme/set':
@@ -425,24 +430,28 @@ function reducer(state, action) {
 
 const StoreContext = createContext(null);
 
-export function StoreProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, undefined, load);
+// initial: the signed-in user's saved state; onSave(state) is called (debounced) after every change.
+export function StoreProvider({ children, initial, onSave }) {
+  const [state, dispatch] = useReducer(reducer, initial, hydrate);
+  const loaded = useRef(state);
 
   useEffect(() => {
+    if (state === loaded.current) return; // nothing changed since loading
     const t = setTimeout(() => {
-      try {
-        // eslint-disable-next-line no-unused-vars
-        const { history, ...persisted } = state; // undo history stays in memory only
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(persisted));
-      } catch {
-        // storage full or blocked — app keeps working in memory
-      }
+      // eslint-disable-next-line no-unused-vars
+      const { history, ...persisted } = state; // undo history stays in memory only
+      onSave?.(persisted);
     }, 250);
     return () => clearTimeout(t);
-  }, [state]);
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     document.documentElement.dataset.theme = state.appTheme;
+    try {
+      localStorage.setItem('monofolio:theme', state.appTheme); // used on the sign-in page
+    } catch {
+      /* ignore */
+    }
   }, [state.appTheme]);
 
   return <StoreContext.Provider value={{ state, dispatch }}>{children}</StoreContext.Provider>;
@@ -451,5 +460,18 @@ export function StoreProvider({ children }) {
 export function useStore() {
   return useContext(StoreContext);
 }
+
+// What a demo account starts with: the sample person, ready to explore.
+export const demoState = () => ({ profile: sampleProfile() });
+
+// Is this profile still empty (a brand-new account, or after “Start fresh”)?
+export function isBlankProfile(p) {
+  const b = p?.basics || {};
+  return !b.name && !b.headline && !b.about && !b.email && !['skills', 'projects', 'experience', 'education'].some((k) => (p?.[k] || []).length);
+}
+// What previews show: your profile, or the sample profile while yours is still empty.
+// Downloads and exports always use your own data — see isBlankProfile().
+let sampleCache = null;
+export const previewProfile = (p) => (isBlankProfile(p) ? (sampleCache ||= sampleProfile()) : p);
 
 export const uid = () => Math.random().toString(36).slice(2, 10);

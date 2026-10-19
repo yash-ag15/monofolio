@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { COLOR_KEYS, DEFAULT_DESIGN, SECTION_LABELS, useStore, withFreshLook } from '../store.jsx';
+import { COLOR_KEYS, DEFAULT_DESIGN, SECTION_LABELS, isBlankProfile, previewProfile, useStore, withFreshLook } from '../store.jsx';
 import { Icon, Seg, Switch, downloadFile, useToast } from '../components/ui.jsx';
 import { CURSORS, FONT_PAIRS, SCENES, THEMES, THEME_CATEGORIES, hashString, renderPortfolio, scenePoster, signatureSvg, slugName } from '../portfolio/render.js';
 import { fingerprint, uniquenessScore } from '../portfolio/brief.js';
@@ -132,10 +132,13 @@ function Toggles({ items, design, set }) {
   );
 }
 
-export default function Studio() {
+export default function Studio({ go }) {
   const { state, dispatch } = useStore();
   const toast = useToast();
-  const { profile, design } = state;
+  const { design } = state;
+  // a new account has no details yet: everything here previews the sample person instead
+  const blankProfile = isBlankProfile(state.profile);
+  const profile = previewProfile(state.profile);
   const [tab, setTab] = useState(() => {
     const t = new URLSearchParams(window.location.hash.split('?')[1] || '').get('tab');
     if (t === 'inspire' || t === 'brief') return 'code'; // merged into the AI tab
@@ -220,11 +223,21 @@ export default function Studio() {
     toast(`${THEMES[key].name} applied${keepColors ? ' with your colours' : ''} — make it yours with Colours, Type and Motion`);
   };
 
+  const needProfile = () => {
+    if (!blankProfile) return false;
+    toast('Add your details in Dev Identity first — this preview is only a sample');
+    go('profile');
+    return true;
+  };
   const exportHtml = () => {
+    if (needProfile()) return;
+    dispatch({ type: 'milestone', key: 'exported' });
     downloadFile('index.html', finalHtml(), 'text/html');
     toast(useCode ? 'Downloaded index.html (your edited code)' : 'Downloaded index.html');
   };
   const openTab = () => {
+    if (needProfile()) return;
+    dispatch({ type: 'milestone', key: 'exported' });
     const blob = new Blob([finalHtml()], { type: 'text/html' });
     window.open(URL.createObjectURL(blob), '_blank', 'noopener');
   };
@@ -366,7 +379,7 @@ export default function Studio() {
 
           {tab === 'colors' && <ColorsPanel design={design} set={set} snapshot={snapshot} traits={null} toast={toast} />}
 
-          {tab === 'code' && <CodePanel generated={generatedFull} code={code} designFp={designFp} dispatch={dispatch} toast={toast} profile={profile} full={codeFull} onFull={setCodeFull} themeName={THEMES[design.layout]?.name} onDownload={exportHtml} />}
+          {tab === 'code' && <CodePanel generated={generatedFull} code={code} designFp={designFp} dispatch={dispatch} toast={toast} profile={profile} blankProfile={blankProfile} full={codeFull} onFull={setCodeFull} themeName={THEMES[design.layout]?.name} onDownload={exportHtml} />}
 
           {tab === 'style' && (
             <div className="panel-body">
@@ -611,7 +624,9 @@ export default function Studio() {
                     className="btn secondary"
                     onClick={async () => {
                       try {
+                        if (needProfile()) return;
                         await navigator.clipboard.writeText(finalHtml());
+                        dispatch({ type: 'milestone', key: 'exported' });
                         toast('HTML copied to clipboard');
                       } catch {
                         toast('Clipboard blocked — use Download instead');
@@ -702,6 +717,14 @@ export default function Studio() {
               <Icon name="download" /> Export
             </button>
           </div>
+          {blankProfile && (
+            <div className="sample-strip">
+              <Icon name="eye" size={14} /> <span>You’re seeing a <b>sample</b> person so you can try every theme.</span>
+              <button className="btn secondary sm" onClick={() => go('profile')}>
+                Add your details
+              </button>
+            </div>
+          )}
           <div className="preview-stage">
             <iframe key={replay} className={`preview-frame ${device}`} title="Portfolio preview" srcDoc={previewHtml} sandbox={useCode ? 'allow-scripts allow-popups' : 'allow-scripts allow-popups allow-same-origin'} />
           </div>

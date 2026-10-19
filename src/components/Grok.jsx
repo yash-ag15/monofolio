@@ -33,7 +33,7 @@ export function GrokSetup() {
     <div className="grok-setup">
       <b>AI features are unavailable right now</b>
       <p>Everything else still works — the offline tools on this page don’t need AI.</p>
-      {import.meta.env.DEV && (
+      {process.env.NODE_ENV !== 'production' && (
         <p>
           <i>Owner setup (only shown in dev):</i> add <code>XAI_API_KEY=your-key</code> to <code>.env.local</code> and restart <code>npm run dev</code>. For the live site run <code>npm start</code> with the same variable. Users never enter a key.
         </p>
@@ -183,7 +183,7 @@ const EXAMPLES = [
 ];
 const CHANGE_EXAMPLES = ['Make it darker with a glowing gradient hero', 'Add a timeline for my experience', 'Bigger project cards with a hover tilt', 'Use a serif font for headings'];
 
-export function AiComposer({ profile, code, dispatch, toast, compact, getThemeHtml, themeName }) {
+export function AiComposer({ profile, blankProfile, code, dispatch, toast, compact, getThemeHtml, themeName }) {
   const on = useGrokOn();
   const b = useBuild();
   const [text, setText] = useState('');
@@ -247,6 +247,11 @@ export function AiComposer({ profile, code, dispatch, toast, compact, getThemeHt
   const canSend = !busy && !reading && (text.trim() || img);
   const send = () => {
     if (!canSend) return;
+    if (blankProfile) {
+      toast('Add your details in Dev Identity first — AI builds your portfolio from them');
+      window.location.hash = '/profile';
+      return;
+    }
     const edit = mode === 'edit' && canEdit;
     const prompt = text.trim() || (edit ? 'Restyle my portfolio to match the attached image.' : '');
     startBuild({

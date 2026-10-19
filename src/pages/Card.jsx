@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { toPng } from 'html-to-image';
-import { useStore } from '../store.jsx';
+import { isBlankProfile, previewProfile, useStore } from '../store.jsx';
 import { Icon, Seg, Switch, useToast } from '../components/ui.jsx';
 import { CARD_DESIGNS, CARD_SIZES, DevCard, cardData } from '../card/designs.jsx';
 
@@ -66,7 +66,8 @@ export default function Card({ go }) {
   const set = (patch) => dispatch({ type: 'card/set', patch });
   const setOpt = (patch) => set({ opts: { ...saved.opts, ...patch } });
 
-  const data = useMemo(() => cardData(state.profile, state.github), [state.profile, state.github]);
+  const blankProfile = isBlankProfile(state.profile);
+  const data = useMemo(() => cardData(previewProfile(state.profile), state.github), [state.profile, state.github]);
   // the QR code points only to a link the user types in (nothing is filled in for them)
   const qrLink = String(opts.qrLink || '').trim();
   const qrUrl = !qrLink ? '' : /^(https?:|mailto:)/i.test(qrLink) ? qrLink : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(qrLink) ? `mailto:${qrLink}` : `https://${qrLink}`;
@@ -101,7 +102,14 @@ export default function Card({ go }) {
     return toPng(el, { pixelRatio: S.w < 1200 && S.h < 1200 ? 2 : 1, cacheBust: true, fontEmbedCSS: await embeddedFonts(), style: { transform: 'none', boxShadow: 'none' } });
   };
   const fileBase = `${(data.first || 'dev').toLowerCase()}-${design.id}-${size}`;
+  // downloads never contain the sample person
+  const needProfile = () => {
+    if (!blankProfile) return false;
+    toast('Add your details in Dev Identity first — this card is only a sample');
+    return true;
+  };
   const savePng = async () => {
+    if (needProfile()) return;
     setBusy('png');
     try {
       const url = await render();
@@ -112,6 +120,7 @@ export default function Card({ go }) {
       a.click();
       a.remove();
       toast('Card saved as PNG');
+      dispatch({ type: 'milestone', key: 'cardMade' });
     } catch (e) {
       toast('Couldn’t export the image — try again');
       console.error(e);
@@ -120,6 +129,7 @@ export default function Card({ go }) {
     }
   };
   const savePdf = async () => {
+    if (needProfile()) return;
     setBusy('pdf');
     try {
       const url = await render();
@@ -128,6 +138,7 @@ export default function Card({ go }) {
       pdf.addImage(url, 'PNG', 0, 0, S.w, S.h);
       pdf.save(`${fileBase}.pdf`);
       toast('Card saved as PDF');
+      dispatch({ type: 'milestone', key: 'cardMade' });
     } catch (e) {
       toast('Couldn’t export the PDF — try again');
       console.error(e);
@@ -136,11 +147,13 @@ export default function Card({ go }) {
     }
   };
   const copyImg = async () => {
+    if (needProfile()) return;
     setBusy('copy');
     try {
       const blob = await (await fetch(await render())).blob();
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       toast('Image copied — paste it into LinkedIn, WhatsApp or anywhere');
+      dispatch({ type: 'milestone', key: 'cardMade' });
     } catch {
       toast('Your browser blocked copying images — use PNG instead');
     } finally {
@@ -249,6 +262,14 @@ export default function Card({ go }) {
               <Icon name="download" /> {busy === 'png' ? 'Saving…' : 'PNG'}
             </button>
           </div>
+          {blankProfile && (
+            <div className="sample-strip">
+              <Icon name="eye" size={14} /> <span>This card shows a <b>sample</b> person until you add your details.</span>
+              <button className="btn secondary sm" onClick={() => go('profile')}>
+                Add your details
+              </button>
+            </div>
+          )}
           <div className="card-stage" ref={stage}>
             <div className="card-scale" style={{ width: S.w * scale, height: S.h * scale, ...style }}>
               <div style={{ transform: `scale(${scale})`, transformOrigin: '0 0', width: S.w, height: S.h }}>

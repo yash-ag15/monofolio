@@ -13,7 +13,7 @@ export function loadGrokStatus() {
       .catch(() => ({ enabled: false }))
       .then((s) => {
         status = { enabled: !!s.enabled, model: s.model || '' };
-        if (!status.enabled && import.meta.env.DEV) console.info(`[grok] off — ${GROK_SETUP_HINT}`);
+        if (!status.enabled && process.env.NODE_ENV !== 'production') console.info(`[grok] off — ${GROK_SETUP_HINT}`);
         listeners.forEach((fn) => fn(status));
         return status;
       });

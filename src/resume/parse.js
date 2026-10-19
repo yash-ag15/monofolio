@@ -8,8 +8,7 @@ import { emptyResumeData } from './model.js';
 
 async function pdfLines(file) {
   const pdfjs = await import('pdfjs-dist');
-  const worker = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = worker;
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'; // copied into public/ by scripts/copy-pdf-worker.mjs
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
   const out = [];
   for (let p = 1; p <= pdf.numPages; p++) {

@@ -141,7 +141,7 @@ export function createGrokHandler(env = process.env) {
         if (res.headersSent) return;
         res.statusCode = 200;
         res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Cache-Control', 'no-store, no-transform'); // no-transform: Next.js must not compress (= buffer) the stream
         res.setHeader('X-Accel-Buffering', 'no');
       };
       // errors after the stream has started are sent as an event the browser understands

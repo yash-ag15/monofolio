@@ -3,16 +3,24 @@
 Everything a student developer needs in one place: one profile (your "Dev Identity") drives a
 unique portfolio site, and later the résumé, cover letters, ATS checks and profile cards.
 
-Runs fully in the browser. No backend, no AI API keys — data is stored in localStorage
-(export/import a JSON backup from the Dashboard).
+A Next.js app: the interface runs in the browser, and API routes (`pages/api/[...path].js` →
+`server/`) handle accounts (email, Google, demo), each user's saved data in Neon Postgres, and AI
+with the site owner's key. Visitors never enter a key.
 
 ## Run
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # static build in dist/ (deploy anywhere)
+cp .env.example .env.local   # then fill in your keys (DATABASE_URL, AI key, Google, AUTH_SECRET)
+npm run dev                  # http://localhost:5173
+npm run build && npm start   # production build
 ```
+
+## Deploy (Vercel)
+
+Import the repo in Vercel — it detects Next.js, no extra settings. Add the variables from
+`.env.local` under Settings → Environment Variables (plus `APP_URL=https://your-domain`), and add
+`https://your-domain/api/auth/google/callback` as a redirect URI in your Google OAuth client.
 
 ## What's done (Portfolio)
 

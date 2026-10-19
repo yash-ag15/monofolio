@@ -59,6 +59,9 @@ export default function Ats({ go }) {
 
   const resume = mode === 'builder' ? resumes.find((r) => r.id === rid) || resumes[0] : upload?.resume;
   const result = useMemo(() => (resume ? checkResume(resume, { jd, source: mode === 'builder' ? { kind: 'builder' } : upload.source }) : null), [resume, jd, mode, upload]);
+  useEffect(() => {
+    if (result) dispatch({ type: 'milestone', key: 'atsChecked' });
+  }, [!!result]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const readFile = async (file) => {
     if (!file) return;
