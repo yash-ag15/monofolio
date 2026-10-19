@@ -42,11 +42,11 @@ export const emptyResumeData = () => ({
 // Demo content (fictional) that shows every part of a template.
 export const demoResumeData = () => ({
   header: {
-    name: 'Aarav Mehta',
+    name: 'Mugiwara Luffy',
     phone: '+91 98765 43210',
-    email: 'aarav.mehta@example.com',
-    linkedin: 'linkedin.com/in/aaravmehta',
-    github: 'github.com/aaravmehta',
+    email: 'luffy@example.com',
+    linkedin: 'linkedin.com',
+    github: 'github.com',
     website: '',
     location: 'Pune, India',
   },
@@ -75,8 +75,8 @@ export const demoResumeData = () => ({
     },
   ],
   projects: [
-    { name: 'CampusCart', tech: 'Next.js, PostgreSQL, Prisma, Stripe', link: 'https://campuscart.app', linkLabel: 'View Project', date: '2026', bullets: 'Built a campus marketplace for used books and gear with 1,200+ students onboarded in the first semester\nImplemented real-time buyer–seller chat with WebSockets and Stripe-based escrow payments' },
-    { name: 'git-standup', tech: 'Node.js, TypeScript', link: 'https://github.com/aaravmehta/git-standup', linkLabel: 'View Project', date: '2025', bullets: 'Published an npm CLI that summarises commits across repositories for daily stand-ups; 3,000+ downloads' },
+    { name: 'CampusCart', tech: 'Next.js, PostgreSQL, Prisma, Stripe', link: '', linkLabel: '', date: '2026', bullets: 'Built a campus marketplace for used books and gear with 1,200+ students onboarded in the first semester\nImplemented real-time buyer–seller chat with WebSockets and Stripe-based escrow payments' },
+    { name: 'git-standup', tech: 'Node.js, TypeScript', link: '', linkLabel: '', date: '2025', bullets: 'Published an npm CLI that summarises commits across repositories for daily stand-ups; 3,000+ downloads' },
     { name: 'Exam Planner', tech: 'React, Firebase', link: '', linkLabel: '', date: '2025', bullets: 'Created a spaced-repetition revision planner used by 300+ classmates during end-semester exams' },
   ],
   skills: [

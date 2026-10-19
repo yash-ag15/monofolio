@@ -132,13 +132,13 @@ export const emptyProfile = () => ({
 
 export const sampleProfile = () => ({
   basics: {
-    name: 'Aarav Mehta',
+    name: 'Mugiwara Luffy',
     headline: 'Full-Stack Developer · CS Undergrad',
     tagline: 'I build fast, accessible web apps and tinker with developer tooling.',
     location: 'Pune, India',
-    email: 'aarav.mehta@example.com',
+    email: 'luffy@example.com',
     phone: '+91 98765 43210',
-    website: 'https://aarav.dev',
+    website: '',
     avatar: '',
     about:
       'Final-year Computer Science student who enjoys turning messy problems into simple products. I have shipped 6 web apps used by 2,000+ students, led my college coding club, and contributed to open source in the React ecosystem. Currently exploring distributed systems and developer experience.',
@@ -146,9 +146,8 @@ export const sampleProfile = () => ({
     resumeUrl: '',
   },
   socials: [
-    { label: 'GitHub', url: 'https://github.com/aaravmehta' },
-    { label: 'LinkedIn', url: 'https://linkedin.com/in/aaravmehta' },
-    { label: 'X', url: 'https://x.com/aaravbuilds' },
+    { label: 'GitHub', url: 'https://github.com' },
+    { label: 'LinkedIn', url: 'https://www.linkedin.com' },
   ],
   skills: [
     { group: 'Languages', items: 'JavaScript, TypeScript, Python, Java, SQL' },
@@ -183,8 +182,8 @@ export const sampleProfile = () => ({
       name: 'CampusCart',
       description: 'A marketplace for students to buy and sell used books and gear inside campus.',
       tech: 'Next.js, PostgreSQL, Prisma, Stripe',
-      link: 'https://campuscart.app',
-      repo: 'https://github.com/aaravmehta/campuscart',
+      link: '',
+      repo: '',
       stars: 48,
       highlight: true,
       bullets: 'Onboarded 1,200 students in the first semester\nImplemented real-time chat with WebSockets',
@@ -195,7 +194,7 @@ export const sampleProfile = () => ({
       description: 'CLI that summarises your commits across repos for daily standups.',
       tech: 'Node.js, TypeScript',
       link: '',
-      repo: 'https://github.com/aaravmehta/git-standup',
+      repo: '',
       stars: 112,
       highlight: true,
       bullets: 'Published to npm with 3k+ downloads',
@@ -206,7 +205,7 @@ export const sampleProfile = () => ({
       description: 'Smart revision planner that schedules topics using spaced repetition.',
       tech: 'React, Firebase',
       link: '',
-      repo: 'https://github.com/aaravmehta/exam-planner',
+      repo: '',
       stars: 9,
       highlight: false,
       bullets: '',
@@ -242,11 +241,47 @@ const initialState = () => ({
   appTheme: 'dark',
 });
 
+// The demo person used to be "Aarav Mehta" with made-up profile links. Saved data from that time
+// (profile, resumes, letters, AI-built pages…) is switched to the new demo, Mugiwara Luffy, with
+// personal links replaced by the plain LinkedIn / GitHub sites. Runs only if the old demo is present.
+const OLD_DEMO = [
+  [/https?:\/\/(www\.)?linkedin\.com\/in\/aaravmehta\/?/g, 'https://www.linkedin.com'],
+  [/linkedin\.com\/in\/aaravmehta/g, 'linkedin.com'],
+  [/https?:\/\/(www\.)?github\.com\/aaravmehta(\/[\w.-]+)?\/?/g, 'https://github.com'],
+  [/github\.com\/aaravmehta(\/[\w.-]+)?/g, 'github.com'],
+  [/https?:\/\/(www\.)?x\.com\/aaravbuilds\/?/g, 'https://x.com'],
+  [/https?:\/\/campuscart\.app\/?/g, ''],
+  [/https?:\/\/aarav\.dev\/?/g, ''],
+  [/aarav\.dev/g, ''],
+  [/aarav\.mehta@example\.com/g, 'luffy@example.com'],
+  [/AARAV MEHTA/g, 'MUGIWARA LUFFY'],
+  [/Aarav Mehta/g, 'Mugiwara Luffy'],
+  [/aaravmehta|aaravbuilds/g, ''],
+  [/Aarav/g, 'Luffy'],
+  [/AARAV/g, 'LUFFY'],
+  [/aarav/g, 'luffy'],
+];
+function migrateDemo(raw) {
+  if (!/aarav/i.test(raw)) return raw;
+  let out = raw;
+  OLD_DEMO.forEach(([re, to]) => (out = out.replace(re, () => to)));
+  try {
+    const s = JSON.parse(out);
+    // the old demo also had an X account — drop that social link entirely
+    if (s.profile?.socials) s.profile.socials = s.profile.socials.filter((x) => x.url !== 'https://x.com');
+    out = JSON.stringify(s);
+    localStorage.setItem(STORAGE_KEY, out);
+  } catch {
+    return raw;
+  }
+  return out;
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return initialState();
-    const saved = JSON.parse(raw);
+    const saved = JSON.parse(migrateDemo(raw));
     const base = initialState();
     return {
       ...base,

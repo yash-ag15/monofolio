@@ -110,7 +110,7 @@ export default function Profile({ go }) {
       {tab === 'basics' && (
         <div className="card card-pad">
           <div className="grid-2">
-            <Text label="Full name" value={b.name} onChange={(v) => setB({ name: v })} placeholder="Aarav Mehta" />
+            <Text label="Full name" value={b.name} onChange={(v) => setB({ name: v })} placeholder="Mugiwara Luffy" />
             <Text label="Headline" value={b.headline} onChange={(v) => setB({ headline: v })} placeholder="Full-Stack Developer · CS Undergrad" />
             <Text className="span-2" label="Tagline" hint="One sentence that captures what you do. Used as the statement in some hero styles." value={b.tagline} onChange={(v) => setB({ tagline: v })} />
             <Text className="span-2" label="About" multiline rows={6} hint="Separate paragraphs with a blank line. Lines starting with “- ” become bullets." value={b.about} onChange={(v) => setB({ about: v })} />
