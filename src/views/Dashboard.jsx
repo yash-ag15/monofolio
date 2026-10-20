@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_DESIGN, isBlankProfile, previewProfile, useStore } from '../app/store.jsx';
+import { DEFAULT_DESIGN, isBlankProfile, useStore } from '../app/store.jsx';
 import { Icon, downloadFile, useToast } from '../components/ui.jsx';
 import { NAV } from '../app/nav.js';
 import { uniquenessScore } from '../portfolio/uniqueness.js';
 import { THEMES, renderPortfolio } from '../portfolio/render.js';
+import { profileWithExamples } from '../portfolio/examples.js';
 import { checkResume, scoreLabel } from '../resume/ats.js';
 import { Thumb } from '../components/Thumb.jsx';
 import { ScoreRing } from './Ats.jsx';
@@ -88,7 +89,7 @@ export default function Dashboard({ go }) {
   }, [activeResume]);
 
   const [previewRef, previewW] = useWidth();
-  const previewHtml = useMemo(() => (useCode ? code.html : renderPortfolio(previewProfile(p), { ...state.design }, { thumb: true })), [useCode, code.html, p, state.design]);
+  const previewHtml = useMemo(() => (useCode ? code.html : renderPortfolio(profileWithExamples(p), { ...state.design }, { thumb: true })), [useCode, code.html, p, state.design]);
   const sampleShown = !useCode && isBlankProfile(p);
 
   const steps = [

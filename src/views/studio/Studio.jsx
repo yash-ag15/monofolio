@@ -8,6 +8,7 @@ import CodePanel from './CodePanel.jsx';
 import { replayEdits } from '../../lib/ai-builder.js';
 import HistoryBar from '../../components/HistoryBar.jsx';
 import { Pressable, Thumb } from '../../components/Thumb.jsx';
+import { profileWithExamples } from '../../portfolio/examples.js';
 
 const TOOLS = [
   { id: 'themes', label: 'Themes', icon: 'grid' },
@@ -139,6 +140,8 @@ export default function Studio({ go }) {
   // a new account has no details yet: everything here previews the sample person instead
   const blankProfile = isBlankProfile(state.profile);
   const profile = previewProfile(state.profile);
+  // the preview fills what you haven't added yet with the sample, so each detail you add replaces just its own part
+  const shown = useMemo(() => profileWithExamples(state.profile), [state.profile]);
   const [tab, setTab] = useState(() => {
     const t = new URLSearchParams(window.location.hash.split('?')[1] || '').get('tab');
     if (t === 'inspire' || t === 'brief') return 'code'; // merged into the AI tab
@@ -167,7 +170,7 @@ export default function Studio({ go }) {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const deferredProfile = useDeferredValue(profile);
+  const deferredProfile = useDeferredValue(shown);
   const deferredDesign = useDeferredValue(design);
   const html = useMemo(() => renderPortfolio(deferredProfile, deferredDesign, { preview: true }), [deferredProfile, deferredDesign]);
 
@@ -210,10 +213,10 @@ export default function Studio({ go }) {
   // optionally carrying over the current colours and hero image.
   const themeDesign = (key) => withFreshLook(design, { layout: key, ...THEMES[key].preset }, keepColors ? COLOR_KEYS : []);
   const themeThumbs = useMemo(
-    () => Object.fromEntries(Object.keys(THEMES).map((k) => [k, renderPortfolio(profile, { ...themeDesign(k), heroImage: '' }, { thumb: true })])),
+    () => Object.fromEntries(Object.keys(THEMES).map((k) => [k, renderPortfolio(shown, { ...themeDesign(k), heroImage: '' }, { thumb: true })])),
     // regenerate when content or the keep-colours choice changes, not on every style tweak
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [profile, keepColors, design.accent, design.colorScheme, design.colors, design.accentUse]
+    [shown, keepColors, design.accent, design.colorScheme, design.colors, design.accentUse]
   );
 
 
@@ -717,14 +720,6 @@ export default function Studio({ go }) {
               <Icon name="download" /> Export
             </button>
           </div>
-          {blankProfile && (
-            <div className="sample-strip">
-              <Icon name="eye" size={14} /> <span>You’re seeing a <b>sample</b> person so you can try every theme.</span>
-              <button className="btn secondary sm" onClick={() => go('profile')}>
-                Add your details
-              </button>
-            </div>
-          )}
           <div className="preview-stage">
             <iframe key={replay} className={`preview-frame ${device}`} title="Portfolio preview" srcDoc={previewHtml} sandbox={useCode ? 'allow-scripts allow-popups' : 'allow-scripts allow-popups allow-same-origin'} />
           </div>
