@@ -1,12 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/ui.jsx';
-import { signIn, signUp, tryDemo } from '../lib/account.jsx';
-
-const FEATURES = [
-  { icon: 'layout', title: 'A portfolio site, built for you', text: 'Pick a theme or describe the look — AI writes the code.' },
-  { icon: 'file', title: 'Resumes that pass ATS', text: 'Clean templates, an ATS score and job-specific tailoring.' },
-  { icon: 'mail', title: 'Cover letters, README & dev card', text: 'Everything else you need to apply, from one profile.' },
-];
+import { signIn, signUp } from '../lib/account.jsx';
+import { HeroStage } from './Landing.jsx';
 
 const GOOGLE_ERRORS = {
   google: 'Google sign-in didn’t work. Please try again, or use your email.',
@@ -14,6 +9,17 @@ const GOOGLE_ERRORS = {
 };
 
 const modeFromHash = () => (/^#\/?signup/.test(window.location.hash) ? 'signup' : 'signin');
+
+// 0–4: length, letters + numbers, mixed case, symbol
+function strength(pw) {
+  if (!pw) return 0;
+  let s = pw.length >= 8 ? 1 : 0;
+  if (s && /[a-z]/i.test(pw) && /\d/.test(pw)) s++;
+  if (s && /[a-z]/.test(pw) && /[A-Z]/.test(pw)) s++;
+  if (s && /[^a-z0-9]/i.test(pw)) s++;
+  return s;
+}
+const STRENGTH = ['Too short', 'Okay', 'Good', 'Strong', 'Very strong'];
 
 function GoogleLogo() {
   return (
@@ -26,156 +32,171 @@ function GoogleLogo() {
   );
 }
 
-export default function Auth({ onSignedIn, demo }) {
+function Field({ icon, label, children, aside }) {
+  return (
+    <label className="au-field">
+      <span className="au-label">
+        {label}
+        {aside}
+      </span>
+      <span className="au-input">
+        <Icon name={icon} size={16} />
+        {children}
+      </span>
+    </label>
+  );
+}
+
+export default function Auth({ onSignedIn }) {
   const [mode, setMode] = useState(modeFromHash);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
+  const [caps, setCaps] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(() => GOOGLE_ERRORS[new URLSearchParams(window.location.hash.split('?')[1] || '').get('error')] || '');
+  const [shake, setShake] = useState(0);
+  const firstRef = useRef(null);
   const signup = mode === 'signup';
+  const pw = strength(password);
 
   useEffect(() => {
     const on = () => setMode(modeFromHash());
     window.addEventListener('hashchange', on);
     return () => window.removeEventListener('hashchange', on);
   }, []);
+  useEffect(() => {
+    firstRef.current?.focus();
+  }, [mode]);
 
-  const switchMode = () => {
+  const switchTo = (m) => {
+    if (m === mode) return;
     setError('');
-    window.location.hash = signup ? '/signin' : '/signup';
+    window.location.hash = m === 'signup' ? '/signup' : '/signin';
   };
-
-  const startDemo = async () => {
-    setError('');
-    setBusy(true);
-    try {
-      const { user } = await tryDemo();
-      window.location.hash = '/dashboard';
-      onSignedIn(user);
-    } catch (err) {
-      setError(err.message || 'The demo isn’t available right now.');
-      setBusy(false);
-    }
+  const fail = (msg) => {
+    setError(msg);
+    setShake((n) => n + 1);
   };
 
   const submit = async (e) => {
     e.preventDefault();
     setError('');
-    if (signup && !name.trim()) return setError('Please enter your name.');
-    if (signup && password.length < 8) return setError('Use at least 8 characters for your password.');
+    if (signup && !name.trim()) return fail('Please enter your name.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return fail('Please enter a valid email address.');
+    if (signup && password.length < 8) return fail('Use at least 8 characters for your password.');
+    if (!signup && !password) return fail('Please enter your password.');
     setBusy(true);
     try {
       const { user } = signup ? await signUp(name.trim(), email.trim(), password) : await signIn(email.trim(), password);
       window.location.hash = '/dashboard';
       onSignedIn(user);
     } catch (err) {
-      setError(err.message || 'Something went wrong — please try again.');
+      fail(err.message || 'Something went wrong — please try again.');
       setBusy(false);
     }
   };
+  const capsCheck = (e) => setCaps(!!e.getModifierState?.('CapsLock'));
 
   return (
-    <div className="auth">
-      <aside className="auth-side">
-        <div className="logo">
+    <div className="au">
+      <aside className="au-side">
+        <a className="logo au-logo" href="#/">
           <div className="logo-mark" aria-hidden="true">
             <i />
             <i />
           </div>
           Monofolio
+        </a>
+        <div className="au-art">
+          <HeroStage />
         </div>
-        <div className="auth-pitch">
-          <span className="auth-eyebrow">For college developers</span>
-          <h2>Get job-ready, all in one place.</h2>
-          <p>Fill in your details once. Turn them into a portfolio, resume, cover letters and more.</p>
-          <ul className="auth-features">
-            {FEATURES.map((f) => (
-              <li key={f.title}>
-                <span className="auth-feature-icon">
-                  <Icon name={f.icon} />
-                </span>
-                <div>
-                  <b>{f.title}</b>
-                  <span>{f.text}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
+        <div className="au-side-copy">
+          <h2>
+            One profile.
+            <br />
+            Your whole job kit.
+          </h2>
+          <p>Portfolio site, resume, ATS check, cover letters, README and dev card — all from the details you enter once.</p>
         </div>
-        <div className="auth-foot">Free to use · Your data stays private to your account</div>
       </aside>
 
-      <main className="auth-main">
-        <div className="auth-card" key={mode}>
-          <div className="logo auth-mobile-logo">
+      <main className="au-main">
+        <div className="au-top">
+          <a className="logo au-mobile-logo" href="#/">
             <div className="logo-mark" aria-hidden="true">
               <i />
               <i />
             </div>
             Monofolio
-          </div>
-          <h1>{signup ? 'Create your account' : 'Welcome back'}</h1>
-          <p className="auth-sub">{signup ? 'Free, and it takes less than a minute.' : 'Sign in to continue where you left off.'}</p>
-
-          <a className="auth-google" href="/api/auth/google">
-            <GoogleLogo /> Continue with Google
           </a>
-          <div className="auth-or">
-            <span>or {signup ? 'sign up' : 'sign in'} with email</span>
+          <a className="au-back" href="#/">
+            <Icon name="chevron" size={13} /> Back to home
+          </a>
+        </div>
+
+        <div className="au-card">
+          <div className="au-switch" role="tablist">
+            <span className={`au-switch-pill ${signup ? 'right' : ''}`} aria-hidden="true" />
+            <button type="button" role="tab" aria-selected={!signup} className={!signup ? 'on' : ''} onClick={() => switchTo('signin')}>
+              Sign in
+            </button>
+            <button type="button" role="tab" aria-selected={signup} className={signup ? 'on' : ''} onClick={() => switchTo('signup')}>
+              Create account
+            </button>
           </div>
 
-          <form onSubmit={submit} className="auth-form" noValidate>
+          <div className="au-head" key={mode}>
+            <h1>{signup ? 'Start building your kit' : 'Welcome back'}</h1>
+            <p>{signup ? 'Free for students. Takes less than a minute.' : 'Sign in to pick up where you left off.'}</p>
+          </div>
+
+          <a className="au-google" href="/api/auth/google">
+            <GoogleLogo /> {signup ? 'Sign up with Google' : 'Continue with Google'}
+          </a>
+          <div className="au-or">
+            <span>or with email</span>
+          </div>
+
+          <form onSubmit={submit} className={`au-form ${shake ? 'shake' : ''}`} key={`f${shake}`} noValidate>
             {signup && (
-              <label className="field">
-                <span>Your name</span>
-                <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Priya Sharma" autoComplete="name" autoFocus />
-              </label>
+              <Field icon="user" label="Your name">
+                <input ref={firstRef} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Priya Sharma" autoComplete="name" />
+              </Field>
             )}
-            <label className="field">
-              <span>Email</span>
-              <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@college.edu" autoComplete="email" autoFocus={!signup} required />
-            </label>
-            <label className="field">
-              <span>Password</span>
-              <div className="auth-pass">
-                <input className="input" type={show ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder={signup ? 'At least 8 characters' : 'Your password'} autoComplete={signup ? 'new-password' : 'current-password'} required />
-                <button type="button" className="auth-eye" onClick={() => setShow(!show)} aria-label={show ? 'Hide password' : 'Show password'}>
-                  {show ? 'Hide' : 'Show'}
-                </button>
+            <Field icon="mail" label="Email">
+              <input ref={signup ? undefined : firstRef} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@college.edu" autoComplete="email" />
+            </Field>
+            <Field icon="lock" label="Password" aside={caps && <em className="au-caps">Caps Lock is on</em>}>
+              <input type={show ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} onKeyUp={capsCheck} onKeyDown={capsCheck} placeholder={signup ? 'At least 8 characters' : 'Your password'} autoComplete={signup ? 'new-password' : 'current-password'} />
+              <button type="button" className="au-eye" onClick={() => setShow(!show)} aria-label={show ? 'Hide password' : 'Show password'}>
+                {show ? 'Hide' : 'Show'}
+              </button>
+            </Field>
+            {signup && password && (
+              <div className={`au-meter s${pw}`} aria-live="polite">
+                <div>
+                  {[1, 2, 3, 4].map((n) => (
+                    <i key={n} className={pw >= n ? 'on' : ''} />
+                  ))}
+                </div>
+                <span>{STRENGTH[pw]}</span>
               </div>
-            </label>
+            )}
             {error && (
-              <div className="auth-error" role="alert">
-                <Icon name="alert" size={15} /> {error}
+              <div className="au-error" role="alert">
+                <Icon name="alert" size={15} /> <span>{error}</span>
               </div>
             )}
-            <button className="btn auth-submit" disabled={busy}>
+            <button className="btn au-submit" disabled={busy}>
+              {busy && <span className="au-spin" aria-hidden="true" />}
               {busy ? (signup ? 'Creating your account…' : 'Signing in…') : signup ? 'Create account' : 'Sign in'}
+              {!busy && <Icon name="chevron" size={14} />}
             </button>
           </form>
 
-          {demo && (
-            <div className="auth-demo">
-              <div>
-                <b>Just looking?</b>
-                <span>
-                  Explore with sample data — no sign-up. Or sign in with <code>{demo.email}</code> / <code>{demo.password}</code>
-                </span>
-              </div>
-              <button type="button" className="btn secondary sm" onClick={startDemo} disabled={busy}>
-                <Icon name="sparkle" /> Try the demo
-              </button>
-            </div>
-          )}
-
-          <p className="auth-switch">
-            {signup ? 'Already have an account?' : 'New to Monofolio?'}{' '}
-            <button type="button" className="linklike" onClick={switchMode}>
-              {signup ? 'Sign in' : 'Create an account'}
-            </button>
-          </p>
+          <p className="au-note">Your profile and work are private to your account.</p>
         </div>
       </main>
     </div>

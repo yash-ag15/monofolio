@@ -461,9 +461,6 @@ export function useStore() {
   return useContext(StoreContext);
 }
 
-// What a demo account starts with: the sample person, ready to explore.
-export const demoState = () => ({ profile: sampleProfile() });
-
 // Is this profile still empty (a brand-new account, or after “Start fresh”)?
 export function isBlankProfile(p) {
   const b = p?.basics || {};

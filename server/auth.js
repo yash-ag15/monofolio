@@ -5,7 +5,6 @@
 //   POST /api/auth/signup          → { name, email, password }
 //   POST /api/auth/signin          → { email, password }
 //   POST /api/auth/signout
-//   POST /api/auth/demo            → signs in to a fresh, temporary demo account (sample data, kept 24 h)
 //   GET  /api/auth/google          → redirects to Google
 //   GET  /api/auth/google/callback → back from Google, signs in, redirects to the app
 //   GET  /api/data                 → { state, savedAt } for the signed-in user
@@ -14,7 +13,6 @@
 // Storage: Neon Postgres when DATABASE_URL is set, otherwise JSON files in DATA_DIR — see store.js.
 // Sessions: an httpOnly cookie signed with AUTH_SECRET (generated and kept in DATA_DIR if not set).
 // Google: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (and APP_URL in production) — see .env.example.
-// Demo: on by default (DEMO_ENABLED=false turns it off). The demo login is DEMO_EMAIL / DEMO_PASSWORD.
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -50,10 +48,6 @@ export function createAuth(env = process.env) {
   const googleId = String(env.GOOGLE_CLIENT_ID || '').trim();
   const googleSecret = String(env.GOOGLE_CLIENT_SECRET || '').trim();
   const google = !!(googleId && googleSecret);
-  const demoOn = String(env.DEMO_ENABLED || 'true') !== 'false';
-  const demoEmail = String(env.DEMO_EMAIL || 'demo@monofolio.app').trim().toLowerCase();
-  const demoPassword = String(env.DEMO_PASSWORD || 'demo1234');
-  const DEMO_HOURS = 24;
 
   // ---------- storage ----------
   const db = createStore(env);
@@ -61,7 +55,7 @@ export function createAuth(env = process.env) {
     () => console.log(`[accounts] saving accounts in ${db.kind === 'neon' ? 'the Neon database' : `files in ${dir}`}`),
     (e) => console.error('[accounts] could not set up the database:', e.message)
   );
-  const publicUser = (u) => u && { id: u.id, name: u.name, email: u.demo ? demoEmail : u.email, avatar: u.avatar || '', google: !!u.googleSub, demo: !!u.demo, created: u.created };
+  const publicUser = (u) => u && { id: u.id, name: u.name, email: u.email, avatar: u.avatar || '', google: !!u.googleSub, created: u.created };
   // signed-in users are looked up on every request; keep them briefly in memory to spare the database
   const cache = new Map();
   const cached = async (id) => {
@@ -109,7 +103,7 @@ export function createAuth(env = process.env) {
     res.setHeader('Set-Cookie', [...(Array.isArray(prev) ? prev : prev ? [prev] : []), parts.join('; ')]);
   };
   const startSession = (req, res, user) => {
-    const days = user.demo ? DEMO_HOURS / 24 : SESSION_DAYS;
+    const days = SESSION_DAYS;
     const payload = Buffer.from(JSON.stringify({ u: user.id, v: user.sv || 0, e: Date.now() + days * 86400000 })).toString('base64url');
     setCookie(req, res, COOKIE, sign(payload), Math.round(days * 86400));
   };
@@ -187,20 +181,6 @@ export function createAuth(env = process.env) {
   const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e.length <= 200;
   const newId = () => crypto.randomBytes(12).toString('base64url');
 
-  // ---------- demo ----------
-  // old demo accounts (and their saved data) are removed after DEMO_HOURS
-  const purgeDemos = () => db.purgeDemos(DEMO_HOURS * 3600000).catch((e) => console.warn('[accounts] demo clean-up failed:', e.message));
-  ready.then(purgeDemos);
-  const startDemo = async (req, res) => {
-    purgeDemos();
-    const id = newId();
-    const u = { id, email: `demo-${id}@demo.invalid`, name: 'Demo account', demo: true, created: Date.now() };
-    await db.insert(u, 'demo');
-    await db.recordLogin(id, 'demo');
-    startSession(req, res, u);
-    return send(res, 200, { user: publicUser(u) });
-  };
-
   // ---------- Google ----------
   const googleStart = (req, res) => {
     if (!google) return redirect(res, '/#/signin?error=google-off');
@@ -264,7 +244,7 @@ export function createAuth(env = process.env) {
     const p = url.pathname;
     if (!p.startsWith('/api/auth/') && p !== '/api/data') return next ? next() : send(res, 404, { error: 'Not found' });
     try {
-      if (p === '/api/auth/me' && req.method === 'GET') return send(res, 200, { user: publicUser(await userFrom(req)), google, demo: demoOn ? { email: demoEmail, password: demoPassword } : null });
+      if (p === '/api/auth/me' && req.method === 'GET') return send(res, 200, { user: publicUser(await userFrom(req)), google });
       if (p === '/api/auth/google' && req.method === 'GET') return googleStart(req, res);
       if (p === '/api/auth/google/callback' && req.method === 'GET') return await googleBack(req, res, url);
       if (req.method !== 'GET' && !sameOrigin(req)) return send(res, 403, { error: 'Cross-site request blocked' });
@@ -280,7 +260,6 @@ export function createAuth(env = process.env) {
         if (!validEmail(email)) return send(res, 400, { error: 'Please enter a valid email address.' });
         if (password.length < 8) return send(res, 400, { error: 'Use at least 8 characters for your password.' });
         if (password.length > 200) return send(res, 400, { error: 'That password is too long.' });
-        if (demoOn && email === demoEmail) return send(res, 400, { error: 'That email is used for the demo — please use your own email.' });
         const existing = await db.byEmail(email);
         if (existing) return send(res, 409, { error: existing.pass ? 'An account with this email already exists — sign in instead.' : 'This email is linked to Google — use “Continue with Google”.' });
         const u = { id: newId(), email, name, pass: hash(password), created: Date.now() };
@@ -292,18 +271,12 @@ export function createAuth(env = process.env) {
       if (p === '/api/auth/signin' && req.method === 'POST') {
         if (tooMany(req)) return send(res, 429, { error: 'Too many attempts — please wait a few minutes.' });
         const b = await json(req);
-        if (demoOn && cleanEmail(b.email) === demoEmail && String(b.password || '') === demoPassword) return startDemo(req, res);
         const u = await db.byEmail(cleanEmail(b.email));
         if (u && !u.pass && u.googleSub) return send(res, 400, { error: 'This account uses Google — click “Continue with Google”.' });
         if (!u || !verify(String(b.password || ''), u.pass)) return send(res, 401, { error: 'Email or password is incorrect.' });
         await db.recordLogin(u.id, 'email');
         startSession(req, res, u);
         return send(res, 200, { user: publicUser(u) });
-      }
-      if (p === '/api/auth/demo' && req.method === 'POST') {
-        if (!demoOn) return send(res, 404, { error: 'The demo is turned off.' });
-        if (tooMany(req)) return send(res, 429, { error: 'Too many attempts — please wait a few minutes.' });
-        return startDemo(req, res);
       }
       if (p === '/api/auth/signout' && req.method === 'POST') {
         setCookie(req, res, COOKIE, '', 0);

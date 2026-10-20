@@ -49,6 +49,7 @@ const paths = {
   shrink: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
   sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z',
   x: 'M6 6l12 12M18 6 6 18',
+  lock: 'M6 11h12v10H6zM9 11V7.5a3 3 0 0 1 6 0V11',
   logout: 'M15 4h4v16h-4M10 16l-4-4 4-4M6 12h10',
   alert: 'M12 7.5v6M12 16.8v.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z',
 };

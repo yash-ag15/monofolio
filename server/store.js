@@ -46,7 +46,6 @@ const fromRow = (r) =>
     avatar: r.avatar,
     pass: r.password_hash || undefined,
     googleSub: r.google_sub || undefined,
-    demo: r.is_demo,
     sv: r.session_version,
     created: new Date(r.created_at).getTime(),
   };
@@ -69,7 +68,7 @@ function neonStore(url, fileDir) {
       await q(
         `insert into users (id, email, name, avatar, password_hash, google_sub, signup_method, is_demo, created_at)
          values ($1, $2, $3, $4, $5, $6, $7, $8, to_timestamp($9 / 1000.0)) on conflict do nothing`,
-        [u.id, u.email, u.name || '', u.avatar || '', u.pass || null, u.googleSub || null, method, !!u.demo, u.created || Date.now()]
+        [u.id, u.email, u.name || '', u.avatar || '', u.pass || null, u.googleSub || null, method, false, u.created || Date.now()]
       );
     },
     async update(id, patch) {
@@ -80,9 +79,6 @@ function neonStore(url, fileDir) {
     },
     async recordLogin(id, method) {
       await q('update users set last_login_at = now(), last_login_method = $2, login_count = login_count + 1 where id = $1', [id, method]);
-    },
-    async purgeDemos(maxAgeMs) {
-      await q(`delete from users where is_demo and created_at < now() - ($1 || ' milliseconds')::interval`, [String(maxAgeMs)]);
     },
     async getData(id) {
       const r = (await q('select state, saved_at from user_data where user_id = $1', [id]))[0];
@@ -138,13 +134,6 @@ function fileStore(dir) {
       const u = users.find((x) => x.id === id);
       if (!u) return;
       Object.assign(u, { lastLogin: Date.now(), lastLoginMethod: method, logins: (u.logins || 0) + 1 });
-      save();
-    },
-    async purgeDemos(maxAgeMs) {
-      const old = users.filter((u) => u.demo && Date.now() - u.created > maxAgeMs);
-      if (!old.length) return;
-      old.forEach((u) => fs.rmSync(stateFile(u.id), { force: true }));
-      users = users.filter((u) => !old.includes(u));
       save();
     },
     async getData(id) {

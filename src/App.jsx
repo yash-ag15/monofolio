@@ -113,7 +113,7 @@ export default function App() {
             {user?.avatar ? <img src={user.avatar} alt="" referrerPolicy="no-referrer" /> : (user?.name || user?.email || '?').trim().charAt(0).toUpperCase()}
           </span>
           <div className="side-who">
-            <b title={user?.email}>{user?.demo ? 'Demo account' : user?.name || user?.email}</b>
+            <b title={user?.email}>{user?.name || user?.email}</b>
             <span className={`side-sync ${sync}`} title={SYNC_TITLE[sync]}>
               <i /> {SYNC_TEXT[sync] || SYNC_TEXT.saved}
             </span>

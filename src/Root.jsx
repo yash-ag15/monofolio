@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import App from './App.jsx';
 import Auth from './pages/Auth.jsx';
-import { StoreProvider, demoState } from './store.jsx';
+import Landing from './pages/Landing.jsx';
+import LandingB from './pages/LandingB.jsx';
+import { StoreProvider } from './store.jsx';
 import { ToastProvider } from './components/ui.jsx';
 import { AccountProvider, fetchMe, loadUserState, saveUserState, signOut } from './lib/account.jsx';
 
@@ -12,14 +14,23 @@ try {
   document.documentElement.dataset.theme = 'dark';
 }
 
+const AUTH_ROUTE = /^#\/?(signin|signup)/;
+// signed out: which page to show — the sign-in form, landing page B (#/b, while comparing), or landing page A
+const outPage = () => (AUTH_ROUTE.test(window.location.hash) ? 'auth' : /^#\/?b(\?|$)/.test(window.location.hash) ? 'b' : 'a');
+
 // Signed out → sign in / sign up. Signed in → the app, with that user's own data.
 export default function Root() {
   const [session, setSession] = useState({ phase: 'loading' });
-  const [demo, setDemo] = useState(null); // the demo login, shown on the sign-in page
+  const [out, setOut] = useState(outPage);
+  useEffect(() => {
+    const on = () => setOut(outPage());
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
 
   const enter = useCallback(async (user) => {
     try {
-      const initial = (await loadUserState(user)) || (user.demo ? demoState() : null);
+      const initial = await loadUserState(user);
       setSession({ phase: 'in', user, initial });
     } catch {
       setSession({ phase: 'out' });
@@ -29,8 +40,7 @@ export default function Root() {
   const boot = useCallback(async () => {
     setSession({ phase: 'loading' });
     try {
-      const { user, demo: demoLogin } = await fetchMe();
-      setDemo(demoLogin || null);
+      const { user } = await fetchMe();
       if (user) await enter(user);
       else setSession({ phase: 'out' });
     } catch {
@@ -69,7 +79,7 @@ export default function Root() {
         </div>
       </div>
     );
-  if (session.phase === 'out') return <Auth onSignedIn={enter} demo={demo} />;
+  if (session.phase === 'out') return out === 'auth' ? <Auth onSignedIn={enter} /> : out === 'b' ? <LandingB /> : <Landing />;
   return (
     <AccountProvider value={account}>
       <StoreProvider key={user.id} initial={session.initial} onSave={onSave}>

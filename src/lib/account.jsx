@@ -18,7 +18,6 @@ async function call(url, { method = 'GET', body } = {}) {
 export const fetchMe = () => call('/api/auth/me');
 export const signIn = (email, password) => call('/api/auth/signin', { method: 'POST', body: { email, password } });
 export const signUp = (name, email, password) => call('/api/auth/signup', { method: 'POST', body: { name, email, password } });
-export const tryDemo = () => call('/api/auth/demo', { method: 'POST' });
 export const signOutRequest = () => call('/api/auth/signout', { method: 'POST' });
 
 const readCache = (id) => {
