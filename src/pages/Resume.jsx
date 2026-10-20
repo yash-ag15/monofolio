@@ -18,6 +18,7 @@ const example = (key, i, field, fallback) => {
 const TABS = [
   { id: 'content', label: 'Content', icon: 'file' },
   { id: 'design', label: 'Template', icon: 'layout' },
+  { id: 'style', label: 'Style', icon: 'type' },
   { id: 'import', label: 'Import', icon: 'upload' },
 ];
 const BULLET_HINT = 'One bullet per line. Start with an action verb and add a number — e.g. “Reduced load time by 40% by…”.';
@@ -406,6 +407,36 @@ export default function Resume({ go }) {
                   </Pressable>
                 ))}
               </div>
+              <button className="btn secondary style-next" onClick={() => setTab('style')}>
+                <Icon name="type" /> Next: adjust font, size & spacing <Icon name="chevron" />
+              </button>
+            </div>
+          )}
+
+          {tab === 'style' && (
+            <div className="resume-body">
+              <div className="style-head">
+                <div>
+                  <span className="lbl-sm">Template</span>
+                  <b>{RESUME_TEMPLATES[resume.style.template]?.name}</b>
+                </div>
+                <div className="row">
+                  <button
+                    className="btn ghost sm"
+                    title="Font, size, spacing and margins back to this template’s defaults"
+                    onClick={() => {
+                      const t = RESUME_TEMPLATES[resume.style.template];
+                      setStyle({ font: t.font, fontSize: t.size, spacing: 'normal', margins: 'normal' });
+                      toast('Back to the template’s default look');
+                    }}
+                  >
+                    <Icon name="undo" /> Reset
+                  </button>
+                  <button className="btn secondary sm" onClick={() => setTab('design')}>
+                    Change template
+                  </button>
+                </div>
+              </div>
 
               <div className="lbl-sm">Font</div>
               <div className="font-row">
@@ -448,6 +479,7 @@ export default function Resume({ go }) {
                 </div>
               )}
               {!['faang', 'compact', 'jakeclassic'].includes(resume.style.template) && <Switch checked={resume.style.icons} onChange={(v) => setStyle({ icons: v })} label="Icons next to contact details" />}
+              <p className="hint">Tip: choosing a different template resets the font and size to that template’s defaults. If your resume runs onto 2 pages, use “Fit to one page” above the preview.</p>
             </div>
           )}
 

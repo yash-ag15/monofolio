@@ -1580,3 +1580,10 @@ p { margin: 0; }
 .dc-size-card.dc-neon .dc-contact, .dc-size-card.dc-gradient .dc-contact { flex-direction: row; flex-wrap: wrap; column-gap: 1.2em; }
 .dc-size-card.dc-neon .dc-contact span:nth-child(n + 3), .dc-size-card.dc-gradient .dc-contact span:nth-child(n + 3) { display: none; }
 .dc-brutalist.dc-size-banner .dc-skills { flex-shrink: 0; }
+
+/* resume builder: Style tab */
+.style-next { width: 100%; justify-content: center; margin-top: 4px; }
+.style-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.style-head > div:first-child { display: grid; gap: 2px; }
+.style-head .lbl-sm { margin: 0; }
+.style-head b { font-size: 14px; }
