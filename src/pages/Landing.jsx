@@ -6,7 +6,6 @@ import { THEMES, renderPortfolio } from '../portfolio/render.js';
 import { RESUME_TEMPLATES } from '../resume/templates.js';
 import { README_TEMPLATES } from '../readme/templates.js';
 import { CARD_DESIGNS } from '../card/designs.jsx';
-import CompareSwitch from '../components/CompareSwitch.jsx';
 import { FAQ } from '../landing/faq.js';
 
 // Real counts from the product, rounded down so the claims are always true
@@ -864,7 +863,6 @@ export default function Landing() {
           </button>
         </div>
       </footer>
-      <CompareSwitch current="a" />
     </div>
   );
 }

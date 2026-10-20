@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import App from './App.jsx';
 import Auth from './pages/Auth.jsx';
 import Landing from './pages/Landing.jsx';
-import LandingB from './pages/LandingB.jsx';
 import { StoreProvider } from './store.jsx';
 import { ToastProvider } from './components/ui.jsx';
 import { AccountProvider, fetchMe, loadUserState, saveUserState, signOut } from './lib/account.jsx';
@@ -15,8 +14,8 @@ try {
 }
 
 const AUTH_ROUTE = /^#\/?(signin|signup)/;
-// signed out: which page to show — the sign-in form, landing page B (#/b, while comparing), or landing page A
-const outPage = () => (AUTH_ROUTE.test(window.location.hash) ? 'auth' : /^#\/?b(\?|$)/.test(window.location.hash) ? 'b' : 'a');
+// signed out: the sign-in form for #/signin and #/signup, the landing page for anything else
+const outPage = () => (AUTH_ROUTE.test(window.location.hash) ? 'auth' : 'landing');
 
 // Signed out → sign in / sign up. Signed in → the app, with that user's own data.
 export default function Root() {
@@ -79,7 +78,7 @@ export default function Root() {
         </div>
       </div>
     );
-  if (session.phase === 'out') return out === 'auth' ? <Auth onSignedIn={enter} /> : out === 'b' ? <LandingB /> : <Landing />;
+  if (session.phase === 'out') return out === 'auth' ? <Auth onSignedIn={enter} /> : <Landing />;
   return (
     <AccountProvider value={account}>
       <StoreProvider key={user.id} initial={session.initial} onSave={onSave}>
