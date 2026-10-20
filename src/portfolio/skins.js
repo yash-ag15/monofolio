@@ -188,7 +188,7 @@ body{font-size:14px}
 .projects-cards .project:nth-child(even){transform:rotate(1.4deg)}
 .projects-cards .project:hover{transform:rotate(0) scale(1.03)}
 .projects-cards .project::before{content:'';position:absolute;top:-13px;left:50%;width:96px;height:26px;margin-left:-48px;background:color-mix(in srgb,var(--fg) 14%,transparent);transform:rotate(-3deg)}
-.avatar,.hero-visual .avatar{border:10px solid #fff;border-bottom-width:34px;border-radius:0;box-shadow:0 18px 40px -14px rgba(0,0,0,.4);transform:rotate(-4deg);filter:grayscale(1)}
+.avatar,.hero-visual .avatar{border:10px solid #fff;border-bottom-width:34px;border-radius:0;box-shadow:0 18px 40px -14px rgba(0,0,0,.4);transform:rotate(-4deg)}
 .sec-label{display:inline-block;background:var(--fg);color:var(--bg);padding:4px 14px;transform:rotate(-1.5deg)}
 .sec{border-top:0}
 .tags li{background:var(--bg);box-shadow:0 2px 0 var(--line-strong)}`,

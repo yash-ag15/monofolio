@@ -2,6 +2,104 @@ import { useState } from 'react';
 import { isBlankProfile, sampleProfile, useStore } from '../store.jsx';
 import { Icon, ListEditor, Switch, Text, useToast } from '../components/ui.jsx';
 import { initials } from '../portfolio/render.js';
+import { extractResumeLines, parseResumeLines } from '../resume/parse.js';
+import { importSummary, mergeProfile, profileFromResume } from '../profile/import.js';
+
+// Upload a resume and fill in the profile from it: a drop zone, then a review of what was found.
+function ResumeImport({ profile, onApply, onClose }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState(null);
+  const [drag, setDrag] = useState(false);
+  const blank = isBlankProfile(profile);
+  const read = async (file) => {
+    if (!file) return;
+    setBusy(true);
+    setError('');
+    setResult(null);
+    try {
+      const parsed = parseResumeLines(await extractResumeLines(file));
+      const incoming = profileFromResume(parsed.data);
+      const found = importSummary(incoming).filter(([, v]) => v);
+      if (!found.length) throw new Error(parsed.warnings[0] || 'We couldn’t find anything to import in that file.');
+      setResult({ incoming, warnings: parsed.warnings, file: file.name });
+    } catch (e) {
+      setError(e.message || 'Could not read that file.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const input = <input type="file" accept=".pdf,.docx,.txt,application/pdf" hidden onChange={(e) => (read(e.target.files[0]), (e.target.value = ''))} />;
+
+  if (result)
+    return (
+      <div className="card card-pad stack pi-review">
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <b>Found in “{result.file}”</b>
+          <button className="btn ghost sm" onClick={() => (setResult(null), onClose?.())}>
+            Cancel
+          </button>
+        </div>
+        <div className="pi-found">
+          {importSummary(result.incoming).map(([label, v]) => (
+            <div key={label} className={v ? '' : 'none'}>
+              <span>{label}</span>
+              <b>{v || '—'}</b>
+            </div>
+          ))}
+        </div>
+        {result.warnings.length > 0 && (
+          <ul className="notes">
+            {result.warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        )}
+        <div className="row">
+          {blank ? (
+            <button className="btn" onClick={() => onApply(result.incoming, 'replace')}>
+              <Icon name="check" /> Fill my profile
+            </button>
+          ) : (
+            <>
+              <button className="btn" onClick={() => onApply(result.incoming, 'add')}>
+                <Icon name="plus" /> Add what’s missing
+              </button>
+              <button className="btn secondary" onClick={() => confirm('Replace your details with the ones from this resume? Sections in the resume overwrite yours.') && onApply(result.incoming, 'replace')}>
+                Replace with resume
+              </button>
+            </>
+          )}
+        </div>
+        <span className="hint">Reading resumes is automatic, so give each tab a quick check afterwards.</span>
+      </div>
+    );
+
+  return (
+      <label
+        className={`pi-drop ${drag ? 'drag' : ''} ${busy ? 'busy' : ''}`}
+        onDragOver={(e) => (e.preventDefault(), setDrag(true))}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => (e.preventDefault(), setDrag(false), read(e.dataTransfer.files[0]))}
+      >
+        <span className="pi-icon">
+          <Icon name="upload" size={20} />
+        </span>
+        <span className="pi-text">
+          <b>{busy ? 'Reading your resume…' : 'Have a resume? Upload it and we’ll fill this page for you.'}</b>
+          <span>PDF, Word (.docx) or text · read on your device · or type your details below — the grey “e.g.” text is just an example.</span>
+          {error && <em className="pi-err">{error}</em>}
+        </span>
+        <span className="btn secondary sm">Choose file</span>
+        {onClose && (
+          <button type="button" className="btn ghost icon" title="Close" onClick={(e) => (e.preventDefault(), onClose())}>
+            <Icon name="x" />
+          </button>
+        )}
+        {input}
+      </label>
+  );
+}
 
 // The sample person's details appear as grey "e.g." hints, never as real data.
 const SAMPLE = sampleProfile();
@@ -93,6 +191,17 @@ export default function Profile({ go }) {
   const [tab, setTab] = useState('basics');
   const setB = (patch) => dispatch({ type: 'basics/set', patch });
   const setList = (key) => (items) => dispatch({ type: 'list/set', key, items });
+  const toast = useToast();
+  const blank = isBlankProfile(p);
+  const [importOpen, setImportOpen] = useState(false);
+  const applyImport = (incoming, mode) => {
+    const { profile, changed, added } = mergeProfile(p, incoming, mode);
+    dispatch({ type: 'profile/set', profile });
+    setImportOpen(false);
+    setTab('basics');
+    const parts = [changed.length && `${changed.length} detail${changed.length === 1 ? '' : 's'}`, added && `${added} item${added === 1 ? '' : 's'}`].filter(Boolean);
+    toast(parts.length ? `Imported ${parts.join(' and ')} — check each tab` : 'Nothing new to add — your profile already has all of it');
+  };
 
   return (
     <div className="page">
@@ -101,19 +210,19 @@ export default function Profile({ go }) {
           <h1>Dev Identity</h1>
           <p>One source of truth for everything about you. Your portfolio, résumé, cover letters and profile card are all generated from this.</p>
         </div>
-        <button className="btn" onClick={() => go('studio')}>
-          <Icon name="layout" /> Design portfolio
-        </button>
+        <div className="row">
+          {!blank && !importOpen && (
+            <button className="btn secondary" onClick={() => setImportOpen(true)}>
+              <Icon name="upload" /> Import resume
+            </button>
+          )}
+          <button className="btn" onClick={() => go('studio')}>
+            <Icon name="layout" /> Design portfolio
+          </button>
+        </div>
       </div>
 
-      {isBlankProfile(p) && (
-        <div className="sample-strip profile-start">
-          <Icon name="sparkle" size={14} />
-          <span>
-            <b>Start here.</b> Grey “e.g.” text is just an example — type your own details over it. Everything else in the app fills itself in from this page.
-          </span>
-        </div>
-      )}
+      {(blank || importOpen) && <ResumeImport profile={p} onApply={applyImport} onClose={blank ? undefined : () => setImportOpen(false)} />}
 
       <div className="tabs" role="tablist">
         {TABS.map((t) => (
@@ -137,7 +246,7 @@ export default function Profile({ go }) {
             <Text label="Website" value={b.website} onChange={(v) => setB({ website: v })} placeholder={eg(SAMPLE.basics.website) || "https://"} />
             <Text placeholder={eg(SAMPLE.basics.availability)} label="Availability" hint="e.g. Open to internships — Summer 2027" value={b.availability} onChange={(v) => setB({ availability: v })} />
             <Text placeholder={eg(SAMPLE.basics.resumeUrl)} label="Résumé link" hint="Public link to your PDF (Drive, etc.)" value={b.resumeUrl} onChange={(v) => setB({ resumeUrl: v })} />
-            <ImageInput label="Photo (shown in grayscale)" value={b.avatar} onChange={(v) => setB({ avatar: v })} max={480} fallback={initials(b.name)} />
+            <ImageInput label="Photo" value={b.avatar} onChange={(v) => setB({ avatar: v })} max={480} fallback={initials(b.name)} />
           </div>
         </div>
       )}

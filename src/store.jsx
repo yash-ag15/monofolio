@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react';
 import { THEMES } from './portfolio/themes.js';
+import { DEMO_AVATAR } from './portfolio/demo-avatar.js';
 
 
 export const SECTION_KEYS = [
@@ -138,7 +139,7 @@ export const sampleProfile = () => ({
     email: 'luffy@example.com',
     phone: '+91 98765 43210',
     website: '',
-    avatar: '',
+    avatar: DEMO_AVATAR,
     about:
       'Final-year Computer Science student who enjoys turning messy problems into simple products. I have shipped 6 web apps used by 2,000+ students, led my college coding club, and contributed to open source in the React ecosystem. Currently exploring distributed systems and developer experience.',
     availability: 'Open to SDE internships — Summer 2027',

@@ -303,12 +303,12 @@ p { margin: 0; }
 .repo p { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
 .repo .meta { display: flex; gap: 14px; color: var(--muted); font-size: 11.5px; margin-top: 7px; font-family: var(--mono); }
 .gh-user { display: flex; gap: 16px; align-items: center; }
-.gh-user img { width: 56px; height: 56px; border-radius: 50%; filter: grayscale(1); border: 1px solid var(--line-2); }
+.gh-user img { width: 56px; height: 56px; border-radius: 50%; border: 1px solid var(--line-2); }
 .lang-bars { display: grid; gap: 10px; }
 .lang-bar { display: grid; grid-template-columns: 110px 1fr 44px; gap: 10px; align-items: center; font-size: 12px; }
 
 .avatar-up { display: flex; gap: 14px; align-items: center; }
-.avatar-up .pic { width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--bg-3) center/cover; filter: grayscale(1); display: grid; place-items: center; color: var(--muted); font-weight: 700; }
+.avatar-up .pic { width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--bg-3) center/cover; display: grid; place-items: center; color: var(--muted); font-weight: 700; }
 
 /* ---------- responsive ---------- */
 @media (max-width: 1180px) {
@@ -1548,3 +1548,35 @@ p { margin: 0; }
 .lp-faq-item.open .lp-faq-a { grid-template-rows: 1fr; }
 .lp-faq-item.open .lp-faq-a > p { padding-bottom: 16px; }
 @media (max-width: 720px) { .lp-faq { grid-template-columns: 1fr; } }
+
+/* Dev Identity: import from resume */
+.pi-drop { display: flex; align-items: center; gap: 16px; padding: 18px 20px; margin-bottom: 18px; border: 1.5px dashed var(--line-2); border-radius: 14px; background: var(--surface); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.pi-drop:hover, .pi-drop.drag { border-color: var(--fg); background: var(--surface-2); }
+.pi-drop.busy { opacity: 0.65; pointer-events: none; }
+.pi-icon { width: 42px; height: 42px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--fg); color: var(--bg); }
+.pi-text { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.pi-text b { font-size: 14px; }
+.pi-text span { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.pi-err { font-style: normal; font-size: 12.5px; color: #e5484d; }
+.pi-review { margin-bottom: 18px; }
+.pi-found { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.pi-found div { display: grid; gap: 2px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); min-width: 0; }
+.pi-found div.none { opacity: 0.45; }
+.pi-found span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pi-found b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 640px) { .pi-drop { flex-wrap: wrap; } .pi-drop .btn { width: 100%; justify-content: center; } }
+
+/* Dev card fit — a photo next to the name leaves less room, so long headlines stay on one line
+   on the small business card, code fits its window, and the trading-card photo sizes to its frame */
+.dc-size-card .dc-role { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; flex-shrink: 0; }
+.dc-size-card.dc-business .dc-role { -webkit-line-clamp: 2; }
+.dc-size-card.dc-code .dc-term, .dc-size-card.dc-terminal .dc-term { font-size: 0.5em; padding: 0.7em 1em; }
+.dc-art { container-type: size; } /* the photo is sized from the art frame itself */
+.dc-art .dc-photo { width: min(78cqw, 78cqh); height: auto; max-width: none; }
+.dc-size-card .dc-skills { flex-shrink: 0; } /* keep the chips their full height */
+.dc-size-card .dc-skills span:nth-child(n + 4) { display: none; } /* three whole chips, not a fourth cut off at the edge */
+.dc-size-card.dc-swiss .dc-skills span:nth-child(n + 3) { display: none; } /* Swiss has a narrower column */
+/* Neon / Gradient business card: two contact links side by side instead of three stacked lines */
+.dc-size-card.dc-neon .dc-contact, .dc-size-card.dc-gradient .dc-contact { flex-direction: row; flex-wrap: wrap; column-gap: 1.2em; }
+.dc-size-card.dc-neon .dc-contact span:nth-child(n + 3), .dc-size-card.dc-gradient .dc-contact span:nth-child(n + 3) { display: none; }
+.dc-brutalist.dc-size-banner .dc-skills { flex-shrink: 0; }

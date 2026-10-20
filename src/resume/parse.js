@@ -87,10 +87,13 @@ function headingKey(line) {
   // other short ALL-CAPS / title lines that look like headings → custom section
   const letters = t.replace(/[^A-Za-z]/g, '');
   if (letters.length >= 4 && t === t.toUpperCase() && t.split(/\s+/).length <= 4) return 'custom';
-  if (/^(positions? of responsibility|leadership|extra[- ]?curricular|volunteer(ing)?|publications?|languages|interests|hobbies|activities|research)/i.test(t)) return 'custom';
+  // only bare headings — "Languages: Kotlin, Java" is a skill row, not a "Languages" section
+  if (/^(positions? of responsibility|leadership|extra[- ]?curricular|volunteer(ing)?|publications?|languages|interests|hobbies|activities|research)( and [a-z ]+)?\s*:?$/i.test(t)) return 'custom';
   return null;
 }
 
+// words that mark the job-title half of "Role, Company" / "Company, Role"
+const ROLE_WORDS = /\b(intern(ship)?|engineer|developer|analyst|designer|manager|scientist|lead|consultant|associate|trainee|researcher|assistant|architect|founder|co-?founder|head|volunteer|member|programmer|specialist|administrator|tester|sde|swe)\b/i;
 const splitTab = (t) => t.split('\t').map((x) => x.trim()).filter(Boolean);
 const findDates = (s) => {
   const m = s.match(DATE_RE);
@@ -138,8 +141,11 @@ function parseExperience(lines) {
     const location = second[1] || (e.head[0] ? splitTab(findDates(e.head[0]).rest)[1] : '') || '';
     // "Role at Company" / "Role, Company" on a single line
     if (!role) {
-      const m = company.match(/^(.*?)\s+(?:at|@|,|—|–|-)\s+(.+)$/);
-      if (m) [role, company] = [m[1], m[2]];
+      const at = company.match(/^(.*?)\s+(?:at|@)\s+(.+)$/);
+      const sep = company.match(/^(.*?)(?:\s+[—–-]\s+|,\s+)(.+)$/);
+      if (at) [role, company] = [at[1], at[2]];
+      else if (sep && ROLE_WORDS.test(sep[1])) [role, company] = [sep[1], sep[2]];
+      else if (sep && ROLE_WORDS.test(sep[2])) [company, role] = [sep[1], sep[2]];
     }
     let tech = '';
     if (role.includes('|')) [role, tech] = role.split('|').map((x) => x.trim());
@@ -220,6 +226,13 @@ export function parseResumeLines(rawLines) {
   const biggest = top.filter((l) => l.size).sort((a, b) => b.size - a.size)[0];
   const nameLine = biggest && biggest.size > (ls[3]?.size || 0) * 1.25 ? biggest : top.find((l) => !/@|\d{5}|linkedin|github|http/i.test(l.text));
   h.name = nameLine ? nameLine.text.replace(/\t/g, ' ').trim() : '';
+  // location: a "City, Country" piece of the contact lines under the name
+  if (!h.location) {
+    const firstHeading = top.findIndex((l) => l !== nameLine && headingKey(l));
+    const contact = (firstHeading < 0 ? top : top.slice(0, firstHeading)).filter((l) => l !== nameLine);
+    const pieces = contact.flatMap((l) => l.text.split(/\s*[|•·◦\t]\s*|\s{3,}/));
+    h.location = (pieces.map((x) => x.trim()).find((x) => /^[A-Za-z][A-Za-z .'-]{1,30},\s*[A-Za-z][A-Za-z .'-]{1,30}$/.test(x) && !/linkedin|github|@/i.test(x)) || '').trim();
+  }
 
   // split into sections
   const sections = [];
