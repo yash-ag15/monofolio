@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../components/ui.jsx';
 import { signIn, signUp } from '../lib/account.jsx';
 import { HeroStage } from './Landing.jsx';
+import { LogoMark } from '../components/Logo.jsx';
 
 const GOOGLE_ERRORS = {
   google: 'Google sign-in didn’t work. Please try again, or use your email.',
@@ -103,10 +104,7 @@ export default function Auth({ onSignedIn }) {
     <div className="au">
       <aside className="au-side">
         <a className="logo au-logo" href="#/">
-          <div className="logo-mark" aria-hidden="true">
-            <i />
-            <i />
-          </div>
+          <LogoMark />
           Monofolio
         </a>
         <div className="au-art">
@@ -125,10 +123,7 @@ export default function Auth({ onSignedIn }) {
       <main className="au-main">
         <div className="au-top">
           <a className="logo au-mobile-logo" href="#/">
-            <div className="logo-mark" aria-hidden="true">
-              <i />
-              <i />
-            </div>
+            <LogoMark />
             Monofolio
           </a>
           <a className="au-back" href="#/">

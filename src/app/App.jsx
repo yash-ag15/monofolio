@@ -14,6 +14,7 @@ import Card from '../views/Card.jsx';
 import { useAutoSync } from '../lib/github.js';
 import { NAV } from './nav.js';
 import { useAccount, useSyncStatus } from '../lib/account.jsx';
+import { LogoMark } from '../components/Logo.jsx';
 
 const SYNC_TEXT = { saved: 'Saved', saving: 'Saving…', offline: 'Offline', 'too-large': 'Not saved' };
 const SYNC_TITLE = { saved: 'All changes are saved to your account', saving: 'Saving your changes…', offline: 'Can’t reach the server — your changes will be saved when you’re back online', 'too-large': 'Your data is too large to save — remove big images or 3D models' };
@@ -79,10 +80,7 @@ export default function App() {
     <div className="app">
       <aside className={`side ${menu ? 'open' : ''}`}>
         <div className="logo">
-          <div className="logo-mark" aria-hidden="true">
-            <i />
-            <i />
-          </div>
+          <LogoMark />
           Monofolio
         </div>
         {NAV.map((g) => (

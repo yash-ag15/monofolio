@@ -7,6 +7,7 @@ import { RESUME_TEMPLATES } from '../resume/templates.js';
 import { README_TEMPLATES } from '../readme/templates.js';
 import { CARD_DESIGNS } from '../card/designs.jsx';
 import { FAQ } from '../content/faq.js';
+import { LogoMark } from '../components/Logo.jsx';
 
 // Real counts from the product, rounded down so the claims are always true
 const floor10 = (n) => (n >= 10 ? `${Math.floor(n / 10) * 10}+` : String(n));
@@ -631,10 +632,7 @@ export default function Landing() {
     <div className="lp">
       <header className="lp-nav">
         <a className="logo" href="#/" onClick={(e) => (e.preventDefault(), top())}>
-          <div className="logo-mark" aria-hidden="true">
-            <i />
-            <i />
-          </div>
+          <LogoMark />
           Monofolio
         </a>
         <nav>
@@ -823,10 +821,7 @@ export default function Landing() {
         <div className="lp-foot-top">
           <div className="lp-foot-brand">
             <span className="logo">
-              <div className="logo-mark" aria-hidden="true">
-                <i />
-                <i />
-              </div>
+              <LogoMark />
               Monofolio
             </span>
             <p>One profile → a portfolio site, resume, cover letters, a GitHub README and a dev card. Made for students who build things.</p>

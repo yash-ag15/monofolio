@@ -1,5 +1,10 @@
 <div align="center">
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/logo-dark.svg" />
+  <img src="docs/media/logo-light.svg" alt="Monofolio logo" width="96" />
+</picture>
+
 # Monofolio
 
 **Write yourself once. Show up everywhere.**

@@ -59,9 +59,15 @@ p { margin: 0; }
 .app { display: grid; grid-template-columns: 252px minmax(0, 1fr); height: 100%; }
 .side { background: var(--bg-2); border-right: 1px solid var(--line); display: flex; flex-direction: column; padding: 22px 14px 16px; overflow-y: auto; }
 .logo { display: flex; align-items: center; gap: 11px; padding: 2px 10px 26px; font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
-.logo-mark { width: 28px; height: 28px; background: var(--fg); border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 7px; }
-.logo-mark i { background: var(--bg); display: block; border-radius: 1px; }
-.logo-mark i:first-child { grid-row: span 2; }
+/* logo: three fanned pages (site, resume, card) with an M — they fan out a little on hover */
+.logo-mark { flex: none; overflow: visible; }
+.logo-mark .lm-page { fill: var(--fg); transform-box: view-box; transform-origin: 7px 27px; transition: transform 0.35s cubic-bezier(0.3, 0.7, 0.2, 1); }
+.logo-mark .lm-back { opacity: 0.32; transform: rotate(26deg); }
+.logo-mark .lm-mid { opacity: 0.6; transform: rotate(13deg); }
+.logo-mark .lm-m { fill: none; stroke: var(--bg); stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+.logo:hover .lm-back { transform: rotate(36deg); }
+.logo:hover .lm-mid { transform: rotate(18deg); }
+@media (prefers-reduced-motion: reduce) { .logo-mark .lm-page { transition: none; } }
 .nav-group { margin-bottom: 22px; }
 .nav-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); padding: 0 12px 8px; font-weight: 600; }
 .nav-item { display: flex; align-items: center; gap: 12px; width: 100%; height: 38px; padding: 0 12px; border-radius: 9px; border: 0; background: none; text-align: left; cursor: pointer; color: var(--fg-2); font-weight: 500; transition: background 0.15s, color 0.15s; }
