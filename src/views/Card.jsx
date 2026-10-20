@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { toPng } from 'html-to-image';
-import { isBlankProfile, previewProfile, useStore } from '../store.jsx';
+import { isBlankProfile, previewProfile, useStore } from '../app/store.jsx';
 import { Icon, Seg, Switch, useToast } from '../components/ui.jsx';
 import { CARD_DESIGNS, CARD_SIZES, DevCard, cardData } from '../card/designs.jsx';
 
@@ -134,8 +134,8 @@ export default function Card({ go }) {
     try {
       const url = await render();
       const { jsPDF } = await import('jspdf');
-      const pdf = new jsPDF({ orientation: S.w >= S.h ? 'landscape' : 'portrait', unit: 'px', format: [S.w, S.h], hotfixes: ['px_scaling'] });
-      pdf.addImage(url, 'PNG', 0, 0, S.w, S.h);
+      const pdf = new jsPDF({ orientation: S.w >= S.h ? 'landscape' : 'portrait', unit: 'px', format: [S.w, S.h], hotfixes: ['px_scaling'], compress: true });
+      pdf.addImage(url, 'PNG', 0, 0, S.w, S.h, undefined, 'FAST'); // compressed — otherwise a single card is several MB
       pdf.save(`${fileBase}.pdf`);
       toast('Card saved as PDF');
       dispatch({ type: 'milestone', key: 'cardMade' });

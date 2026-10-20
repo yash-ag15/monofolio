@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../components/ui.jsx';
 import { Thumb } from '../components/Thumb.jsx';
-import { DEFAULT_DESIGN, sampleProfile, withFreshLook } from '../store.jsx';
+import { DEFAULT_DESIGN, sampleProfile, withFreshLook } from '../app/store.jsx';
 import { THEMES, renderPortfolio } from '../portfolio/render.js';
 import { RESUME_TEMPLATES } from '../resume/templates.js';
 import { README_TEMPLATES } from '../readme/templates.js';
 import { CARD_DESIGNS } from '../card/designs.jsx';
-import { FAQ } from '../landing/faq.js';
+import { FAQ } from '../content/faq.js';
 
 // Real counts from the product, rounded down so the claims are always true
 const floor10 = (n) => (n >= 10 ? `${Math.floor(n / 10) * 10}+` : String(n));

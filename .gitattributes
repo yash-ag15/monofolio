@@ -1,0 +1,7 @@
+# Store text with LF line endings everywhere (contributors use Windows, macOS and Linux)
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.mp4 binary

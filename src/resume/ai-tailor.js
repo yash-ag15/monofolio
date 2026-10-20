@@ -1,7 +1,7 @@
 // AI suggestions for tailoring a resume to a job description: what to add, rewrite and highlight.
 // Suggestions only — the user picks which to use. Facts are never invented.
 
-import { grokJSON } from '../lib/grok.js';
+import { aiJSON } from '../lib/ai.js';
 import { lines } from './model.js';
 
 const SYSTEM = `You are a senior recruiter and resume coach for students and early-career candidates in every field (software, core engineering, finance, marketing, design, operations).
@@ -39,9 +39,9 @@ function resumeForAi(resume) {
   };
 }
 
-export async function grokTailor({ resume, jd, signal }) {
+export async function aiTailor({ resume, jd, signal }) {
   const user = `JOB DESCRIPTION:\n${String(jd).slice(0, 8000)}\n\nRESUME (JSON):\n${JSON.stringify(resumeForAi(resume))}`;
-  const r = await grokJSON({ system: SYSTEM, user, temperature: 0.3, maxTokens: 3000, signal });
+  const r = await aiJSON({ system: SYSTEM, user, temperature: 0.3, maxTokens: 3000, signal });
   const arr = (v, n) => (Array.isArray(v) ? v.slice(0, n) : []);
   const allBullets = [...resume.data.experience, ...resume.data.projects].flatMap((e) => lines(e.bullets));
   return {

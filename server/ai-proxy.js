@@ -1,9 +1,9 @@
-// Server-side AI gateway (xAI Grok or Groq). The site owner's API key lives here (env XAI_API_KEY / AI_API_KEY) and is
+// Server-side AI gateway (Groq or xAI Grok — chosen from the key). The site owner's key lives here (env AI_API_KEY) and is
 // never sent to the browser — visitors only send their prompt / image / resume text.
-// Used by the Vite dev server (vite.config.js) and by the production server (server.js).
+// Mounted by server/api.js, which the Next.js API route (pages/api/[...path].js) runs for every /api request.
 //
-//   GET  /api/grok/status → { enabled, model }
-//   POST /api/grok/chat   → { messages, temperature?, json?, vision?, stream?, maxTokens? }  →  xAI chat completion
+//   GET  /api/ai/status → { enabled, model }
+//   POST /api/ai/chat   → { messages, temperature?, json?, vision?, stream?, maxTokens? }  →  xAI chat completion
 //
 // Guards, because every call is billed to the owner: POST only, one fixed endpoint, the model is
 // chosen here (not by the browser), capped output tokens, a body-size limit and per-IP rate limits.
@@ -12,7 +12,7 @@ const MAX_BODY = 6 * 1024 * 1024; // a downscaled image is ~100–400 KB; 6 MB i
 const MAX_TOKENS = 4000; // JSON answers
 const MAX_CODE_TOKENS = 20000; // a complete portfolio page
 
-export function createGrokHandler(env = process.env) {
+export function createAiHandler(env = process.env) {
   // Works with xAI (Grok, keys "xai-…") or Groq (keys "gsk_…") — both speak the OpenAI chat API.
   const key = String(env.AI_API_KEY || env.GROQ_API_KEY || env.XAI_API_KEY || '')
     .trim()
@@ -21,8 +21,8 @@ export function createGrokHandler(env = process.env) {
   const base = (env.AI_BASE_URL || env.XAI_BASE_URL || (groq ? 'https://api.groq.com/openai' : 'https://api.x.ai')).replace(/\/$/, '');
   const model = env.AI_MODEL || env.XAI_MODEL || (groq ? 'openai/gpt-oss-120b' : 'grok-4');
   const visionModel = env.AI_VISION_MODEL || env.XAI_VISION_MODEL || (groq ? 'qwen/qwen3.8-27b' : model);
-  const perMinute = Number(env.GROK_RATE_PER_MINUTE || 6);
-  const perDay = Number(env.GROK_RATE_PER_DAY || 60);
+  const perMinute = Number(env.AI_RATE_PER_MINUTE || env.GROK_RATE_PER_MINUTE || 6);
+  const perDay = Number(env.AI_RATE_PER_DAY || env.GROK_RATE_PER_DAY || 60);
   const hits = new Map(); // ip → timestamps (ms)
 
   const send = (res, status, obj) => {
@@ -87,7 +87,7 @@ export function createGrokHandler(env = process.env) {
           const m = t.match(/Limit (\d+), Requested (\d+)/i);
           const next = m && !shrunk ? body.max_tokens - (Number(m[2]) - Number(m[1])) - 300 : 0;
           if (next >= 500) {
-            console.warn(`[grok] request too large for the plan — retrying with max_tokens ${next}`);
+            console.warn(`[ai] request too large for the plan — retrying with max_tokens ${next}`);
             body = { ...body, max_tokens: next };
             shrunk = true;
             continue;
@@ -98,16 +98,16 @@ export function createGrokHandler(env = process.env) {
       if (r.status !== 429 || attempt >= 3) return r;
       const wait = await retryAfterMs(r);
       if (!wait || wait > MAX_WAIT_MS) return r;
-      console.warn(`[grok] rate limited — retrying in ${(wait / 1000).toFixed(1)}s`);
+      console.warn(`[ai] rate limited — retrying in ${(wait / 1000).toFixed(1)}s`);
       onWait?.(wait);
       await sleep(wait + 500, signal);
     }
   }
 
-  return async function grokHandler(req, res, next) {
+  return async function aiHandler(req, res, next) {
     const url = (req.url || '').split('?')[0];
-    if (url === '/api/grok/status') return send(res, 200, { enabled: !!key, model });
-    if (url !== '/api/grok/chat') return next ? next() : send(res, 404, { error: 'Not found' });
+    if (url === '/api/ai/status') return send(res, 200, { enabled: !!key, model });
+    if (url !== '/api/ai/chat') return next ? next() : send(res, 404, { error: 'Not found' });
     if (req.method !== 'POST') return send(res, 405, { error: 'POST only' });
     if (!key) return send(res, 503, { error: 'AI features are not available right now.' });
 
@@ -159,7 +159,7 @@ export function createGrokHandler(env = process.env) {
         const r = await upstream({ ...body, stream: true }, ctrl.signal, onWait);
         if (!r.ok || !r.body) {
           const t = await r.text().catch(() => '');
-          console.error(`[grok] ${r.status} ${t.slice(0, 500)}`);
+          console.error(`[ai] ${r.status} ${t.slice(0, 500)}`);
           const tooLarge = /too large/i.test(t);
           return fail(r.status === 429 && !tooLarge ? 429 : 502, tooLarge ? 'This request is too big for the AI plan’s limits — try a shorter request.' : r.status === 429 ? 'The AI is busy right now — try again in a minute.' : 'The AI request failed — try again.');
         }
@@ -168,7 +168,7 @@ export function createGrokHandler(env = process.env) {
         return res.end();
       } catch (e) {
         if (ctrl.signal.aborted) return; // visitor cancelled
-        console.error('[grok] stream error', e.message);
+        console.error('[ai] stream error', e.message);
         return fail(502, 'Couldn’t reach the AI service — try again.');
       }
     }
@@ -185,7 +185,7 @@ export function createGrokHandler(env = process.env) {
       const text = await r.text();
       if (!r.ok) {
         // log the real reason for the owner; give visitors a plain message
-        console.error(`[grok] ${r.status} ${text.slice(0, 500)}`);
+        console.error(`[ai] ${r.status} ${text.slice(0, 500)}`);
         const msg = r.status === 429 ? 'The AI is busy right now — try again in a minute.' : r.status === 401 || r.status === 403 ? 'AI features are not available right now.' : 'The AI request failed — try again.';
         return send(res, r.status === 429 ? 429 : 502, { error: msg });
       }
@@ -194,7 +194,7 @@ export function createGrokHandler(env = process.env) {
       res.setHeader('Cache-Control', 'no-store');
       res.end(text);
     } catch (e) {
-      console.error('[grok] upstream error', e.message);
+      console.error('[ai] upstream error', e.message);
       send(res, 502, { error: 'Couldn’t reach the AI service — try again.' });
     }
   };

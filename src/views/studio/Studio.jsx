@@ -1,13 +1,13 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
-import { COLOR_KEYS, DEFAULT_DESIGN, SECTION_LABELS, isBlankProfile, previewProfile, useStore, withFreshLook } from '../store.jsx';
-import { Icon, Seg, Switch, downloadFile, useToast } from '../components/ui.jsx';
-import { CURSORS, FONT_PAIRS, SCENES, THEMES, THEME_CATEGORIES, hashString, renderPortfolio, scenePoster, signatureSvg, slugName } from '../portfolio/render.js';
-import { fingerprint, uniquenessScore } from '../portfolio/brief.js';
+import { COLOR_KEYS, DEFAULT_DESIGN, SECTION_LABELS, isBlankProfile, previewProfile, useStore, withFreshLook } from '../../app/store.jsx';
+import { Icon, Seg, Switch, downloadFile, useToast } from '../../components/ui.jsx';
+import { CURSORS, FONT_PAIRS, SCENES, THEMES, THEME_CATEGORIES, hashString, renderPortfolio, scenePoster, signatureSvg, slugName } from '../../portfolio/render.js';
+import { fingerprint, uniquenessScore } from '../../portfolio/uniqueness.js';
 import ColorsPanel from './ColorsPanel.jsx';
 import CodePanel from './CodePanel.jsx';
-import { replayEdits } from '../lib/ai-builder.js';
-import HistoryBar from '../components/HistoryBar.jsx';
-import { Pressable, Thumb } from '../components/Thumb.jsx';
+import { replayEdits } from '../../lib/ai-builder.js';
+import HistoryBar from '../../components/HistoryBar.jsx';
+import { Pressable, Thumb } from '../../components/Thumb.jsx';
 
 const TOOLS = [
   { id: 'themes', label: 'Themes', icon: 'grid' },
@@ -377,7 +377,7 @@ export default function Studio({ go }) {
             </div>
           )}
 
-          {tab === 'colors' && <ColorsPanel design={design} set={set} snapshot={snapshot} traits={null} toast={toast} />}
+          {tab === 'colors' && <ColorsPanel design={design} set={set} snapshot={snapshot} toast={toast} />}
 
           {tab === 'code' && <CodePanel generated={generatedFull} code={code} designFp={designFp} dispatch={dispatch} toast={toast} profile={profile} blankProfile={blankProfile} full={codeFull} onFull={setCodeFull} themeName={THEMES[design.layout]?.name} onDownload={exportHtml} />}
 

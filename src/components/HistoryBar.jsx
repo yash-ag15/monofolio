@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useStore } from '../store.jsx';
+import { useStore } from '../app/store.jsx';
 import { THEMES } from '../portfolio/themes.js';
 import { Icon, useToast } from './ui.jsx';
 

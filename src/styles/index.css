@@ -1,0 +1,12 @@
+/* Global styles, one file per area. Order matters: later files may refine earlier ones. */
+@import './base.css';
+@import './dashboard.css';
+@import './studio.css';
+@import './github.css';
+@import './profile.css';
+@import './resume.css';
+@import './readme.css';
+@import './cover.css';
+@import './card.css';
+@import './landing.css';
+@import './auth.css';

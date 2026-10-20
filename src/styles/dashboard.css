@@ -1,0 +1,111 @@
+/* Dashboard. */
+
+/* ---------- dashboard ---------- */
+.hero-card .row { position: relative; z-index: 1; }
+.tool { border: 1px solid var(--line); border-radius: 16px; padding: 20px; background: var(--surface); cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 10px; transition: border-color 0.15s, transform 0.15s, background 0.15s; }
+.tool:hover { border-color: var(--line-2); background: var(--surface-2); transform: translateY(-2px); }
+.tool svg { width: 20px; height: 20px; }
+.tool h4 { font-size: 14.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.tool p { color: var(--muted); font-size: 12.5px; line-height: 1.55; }
+.stat { display: flex; flex-direction: column; gap: 8px; }
+.stat b { font-size: 34px; letter-spacing: -0.04em; font-weight: 700; }
+.checklist .box { width: 18px; height: 18px; border-radius: 6px; border: 1.5px solid var(--line-2); display: grid; place-items: center; flex: none; }
+.checklist .done .box { background: var(--fg); border-color: var(--fg); color: var(--inv-fg); }
+.checklist .done span:last-child { color: var(--muted); text-decoration: line-through; }
+
+/* ---------- Dashboard ---------- */
+.dash { display: flex; flex-direction: column; gap: 28px; }
+.dash h3 { font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+.dash-label { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; }
+.dash-hero { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 18px; }
+.dash-hello { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; padding: 34px 34px 28px; background: radial-gradient(120% 140% at 100% 0%, var(--surface-2) 0%, var(--surface) 55%); }
+.dash-hello::after { content: ''; position: absolute; right: -60px; top: -60px; width: 240px; height: 240px; border-radius: 50%; border: 1px solid var(--line-2); box-shadow: 0 0 0 40px color-mix(in srgb, var(--line) 40%, transparent), 0 0 0 80px color-mix(in srgb, var(--line) 20%, transparent); pointer-events: none; }
+.dash-kicker { font-size: 13.5px; color: var(--fg-2); font-weight: 500; }
+.dash-hello h1 { font-size: 34px; font-weight: 750; letter-spacing: -0.04em; margin-top: 8px; line-height: 1.1; }
+.dash-hello p { color: var(--muted); margin-top: 10px; max-width: 52ch; font-size: 14.5px; line-height: 1.55; }
+.dash-progress { margin-top: 26px; max-width: 460px; position: relative; z-index: 1; }
+.dash-progress-top { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 8px; }
+.dash-progress-top span { color: var(--muted); font-family: var(--mono); }
+.dash-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.dash-bar i { height: 6px; border-radius: 99px; background: var(--line-2); transition: background 0.3s; }
+.dash-bar i.on { background: var(--fg); }
+.dash-next { border-radius: 20px; padding: 26px; background: var(--inv-bg); color: var(--inv-fg); display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.dash-next .dash-label { color: color-mix(in srgb, var(--inv-fg) 55%, transparent); }
+.dash-next-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, var(--inv-fg) 8%, transparent); border: 1px solid color-mix(in srgb, var(--inv-fg) 14%, transparent); margin-top: 4px; }
+.dash-next h2 { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+.dash-next p { font-size: 13.5px; line-height: 1.5; color: color-mix(in srgb, var(--inv-fg) 70%, transparent); flex: 1; }
+.dash-next .btn { background: var(--inv-fg); color: var(--inv-bg); border-color: var(--inv-fg); margin-top: 6px; }
+.dash-next .btn.secondary { background: transparent; color: var(--inv-fg); border-color: color-mix(in srgb, var(--inv-fg) 30%, transparent); }
+.dash-section { display: flex; flex-direction: column; gap: 14px; }
+.dash-section-head p { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.dash-split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+.dash-preview { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.dash-preview-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.dash-preview-head b { font-size: 15px; display: block; margin-top: 3px; }
+.dash-frame { position: relative; border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; background: var(--bg); }
+.dash-frame .vthumb { border: 0; border-radius: 0; }
+.dash-browser { display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--bg-3); }
+.dash-browser i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); }
+.dash-browser span { margin-left: 8px; font-size: 11px; font-family: var(--mono); color: var(--muted); background: var(--bg); border-radius: 6px; padding: 2px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-frame-cover { position: absolute; inset: 0; background: transparent; border: 0; cursor: pointer; }
+.dash-frame-cover:hover { background: color-mix(in srgb, var(--fg) 4%, transparent); }
+.dash-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dash-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 18px; text-align: left; cursor: pointer; color: var(--fg); font: inherit; transition: border-color 0.15s, transform 0.15s; }
+.dash .card + .card { margin-top: 0; }
+.dash-hello > * { position: relative; z-index: 1; }
+.dash-hello::after { z-index: 0; }
+.dash-stat:hover { border-color: var(--line-2); transform: translateY(-2px); }
+.dash-stat > div:last-child { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dash-stat b { font-size: 14.5px; display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; }
+.dash-stat .small { line-height: 1.4; }
+.dash-stat .ring-in b { font-size: 17px; margin: 0; }
+.dash-num { font-size: 34px; font-weight: 750; letter-spacing: -0.04em; line-height: 64px; height: 64px; }
+.dash-improve { padding: 22px 24px; }
+.dash-improve-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.dash-improve-head p { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.dash-wins { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.dash-win { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px dashed var(--line-2); border-radius: 10px; background: transparent; color: var(--fg-2); font: inherit; font-size: 13px; text-align: left; cursor: pointer; transition: border-color 0.15s, color 0.15s, background 0.15s; }
+.dash-win span:nth-child(2) { flex: 1; }
+.dash-win:hover { border-style: solid; border-color: var(--fg); color: var(--fg); background: var(--surface-2); }
+.dash-win-dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--muted); flex: none; }
+.dash-tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.dash-tool { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; color: var(--fg); font: inherit; transition: border-color 0.15s, transform 0.15s; }
+.dash-tool:hover { border-color: var(--line-2); transform: translateY(-2px); }
+.dash-tool:hover .dash-tool-go { color: var(--fg); }
+.dash-tool-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.dash-tool-icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--bg-3); border: 1px solid var(--line-2); }
+.dash-tool-icon svg { width: 18px; height: 18px; }
+.dash-chip { font-size: 11px; border-radius: 99px; padding: 3px 9px; border: 1px solid var(--line-2); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 62%; }
+.dash-chip.on { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 600; }
+.dash-tool h4 { font-size: 14.5px; font-weight: 650; }
+.dash-tool p { font-size: 12.5px; color: var(--muted); line-height: 1.5; flex: 1; }
+.dash-tool-go { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--fg-2); margin-top: 6px; transition: color 0.15s; }
+.dash-data { padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.dash-data h3 { display: flex; align-items: center; gap: 8px; font-size: 14.5px; }
+.dash-data p { color: var(--muted); font-size: 12.5px; margin-top: 4px; max-width: 58ch; }
+@media (max-width: 960px) { .dash-hero, .dash-split { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  .dash-stats { grid-template-columns: 1fr; }
+  .dash-hello { padding: 24px 20px; }
+  .dash-hello h1 { font-size: 26px; }
+}
+
+/* Dashboard motion: a short, one-time entrance. Nothing loops. */
+@keyframes dash-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes dash-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.dash > * { animation: dash-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.dash > *:nth-child(2) { animation-delay: 0.07s; }
+.dash > *:nth-child(3) { animation-delay: 0.14s; }
+.dash > *:nth-child(4) { animation-delay: 0.21s; }
+.dash > *:nth-child(n + 5) { animation-delay: 0.28s; }
+.dash-next { animation: dash-rise 0.5s 0.12s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.dash-bar i { position: relative; overflow: hidden; }
+.dash-bar i.on { background: var(--line-2); }
+.dash-bar i.on::after { content: ''; position: absolute; inset: 0; background: var(--fg); transform-origin: left; animation: dash-fill 0.45s calc(0.35s + var(--i, 0) * 0.09s) ease-out both; }
+.dash-next .btn svg, .dash-tool-go svg { transition: transform 0.2s; }
+.dash-next .btn:hover svg, .dash-tool:hover .dash-tool-go svg { transform: translateX(3px); }
+.dash-tool-icon { transition: background 0.2s, color 0.2s, border-color 0.2s; }
+.dash-tool:hover .dash-tool-icon { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+@media (prefers-reduced-motion: reduce) {
+  .dash > *, .dash-next, .dash-bar i.on::after { animation: none; }
+}

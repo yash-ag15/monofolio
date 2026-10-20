@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useStore } from '../store.jsx';
+import { useStore } from '../app/store.jsx';
 
 // Uses GitHub's public REST API — no token required (60 requests/hour per IP).
 const API = 'https://api.github.com';

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useStore } from '../store.jsx';
+import { useStore } from '../app/store.jsx';
 import { Icon, Switch, useToast } from '../components/ui.jsx';
 import { fetchGitHub, isLinked, languageStats, refreshLinkedProjects, repoToProject } from '../lib/github.js';
 

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useStore } from '../store.jsx';
+import { useStore } from '../app/store.jsx';
 import { Icon, Seg, useToast } from '../components/ui.jsx';
 import { newResume } from '../resume/model.js';
 import { renderResumeText } from '../resume/templates.js';
 import { extractResumeLines, parseResumeLines } from '../resume/parse.js';
 import { checkResume, scoreLabel, scoreNote } from '../resume/ats.js';
-import { GrokReviewCard } from '../components/Grok.jsx';
+import { AiReviewCard } from '../components/Ai.jsx';
 
 export const JD_KEY = 'monofolio:jd';
 export const loadJd = () => {
@@ -215,7 +215,7 @@ export default function Ats({ go }) {
               )}
             </div>
             <nav className="cat-nav" aria-label="Report sections">
-              <button onClick={() => jump('r-grok')}>
+              <button onClick={() => jump('r-ai')}>
                 <span className="st st-pass">
                   <Icon name="sparkle" />
                 </span>
@@ -259,7 +259,7 @@ export default function Ats({ go }) {
               <Tile label="Length" value={result.words} note="words" />
             </div>
 
-            <GrokReviewCard
+            <AiReviewCard
               key={resume.id + (mode === 'upload' ? upload.name : '')}
               text={mode === 'builder' ? renderResumeText(resume) : upload.source.rawText}
               jd={jd}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Icon, Switch, downloadFile } from '../components/ui.jsx';
-import CodeEditor from '../components/CodeEditor.jsx';
-import { AiBuildStatus, AiComposer, GrokBadge, useBuild, useGrokOn } from '../components/Grok.jsx';
+import { Icon, Switch, downloadFile } from '../../components/ui.jsx';
+import CodeEditor from '../../components/CodeEditor.jsx';
+import { AiBuildStatus, AiComposer, AiBadge, useBuild, useAiOn } from '../../components/Ai.jsx';
 
 // "Code" tool: edit the full HTML of the current portfolio and watch the preview update live.
 export default function CodePanel({ generated, code, designFp, dispatch, toast, profile, blankProfile, full, onFull, themeName, onDownload }) {
@@ -10,7 +10,7 @@ export default function CodePanel({ generated, code, designFp, dispatch, toast, 
   const [stats, setStats] = useState({ lines: 0, kb: 0 });
   const started = !!code.html;
   const stale = started && code.fp && code.fp !== 'ai' && code.fp !== designFp;
-  const aiOn = useGrokOn();
+  const aiOn = useAiOn();
   const [max, setMax] = useState(false); // the code editor alone fills the screen
   useEffect(() => {
     if (!max) return;
@@ -89,7 +89,7 @@ export default function CodePanel({ generated, code, designFp, dispatch, toast, 
           <div className="ai-hero">
             <div className="ai-hero-head">
               <h3>Create or change your portfolio with AI</h3>
-              <GrokBadge />
+              <AiBadge />
             </div>
             <p className="hint">Ask the AI to change the {themeName || 'current'} theme you picked, or start a brand-new portfolio. Describe it, add an inspiration image (attach, drag in, or Ctrl+V), or both — you watch the code and the live preview update. Then keep asking for changes.</p>
             <AiComposer profile={profile} blankProfile={blankProfile} code={code} dispatch={dispatch} toast={toast} getThemeHtml={() => generated} themeName={themeName} />

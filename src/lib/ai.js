@@ -1,32 +1,32 @@
-// Grok (xAI) client. Calls our own server at /api/grok/*, which holds the site owner's API key
-// (see server/grok-proxy.js). Visitors never provide or see a key — they just send a prompt or image.
+// AI client (Groq or xAI Grok, chosen on the server). Calls our own server at /api/ai/*, which holds the site owner's API key
+// (see server/ai-proxy.js). Visitors never provide or see a key — they just send a prompt or image.
 
 let status = null; // { enabled, model } once known
 let pending = null;
 const listeners = new Set();
 
-export function loadGrokStatus() {
+export function loadAiStatus() {
   if (status) return Promise.resolve(status);
   if (!pending)
-    pending = fetch('/api/grok/status')
+    pending = fetch('/api/ai/status')
       .then((r) => (r.ok ? r.json() : { enabled: false }))
       .catch(() => ({ enabled: false }))
       .then((s) => {
         status = { enabled: !!s.enabled, model: s.model || '' };
-        if (!status.enabled && process.env.NODE_ENV !== 'production') console.info(`[grok] off — ${GROK_SETUP_HINT}`);
+        if (!status.enabled && process.env.NODE_ENV !== 'production') console.info(`[ai] off — ${AI_SETUP_HINT}`);
         listeners.forEach((fn) => fn(status));
         return status;
       });
   return pending;
 }
-export const grokStatus = () => status;
-export const onGrokStatus = (fn) => {
+export const aiStatus = () => status;
+export const onAiStatus = (fn) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
 };
 
 // shown to the site owner only (dev builds)
-export const GROK_SETUP_HINT = 'Add XAI_API_KEY=your-key to .env.local in the project folder and restart npm run dev.';
+export const AI_SETUP_HINT = 'Add XAI_API_KEY=your-key to .env.local in the project folder and restart npm run dev.';
 
 // Pull the first JSON object out of a reply (models sometimes wrap it in ```json fences).
 export function extractJson(text) {
@@ -51,14 +51,14 @@ export function extractJson(text) {
 }
 
 /**
- * Ask Grok for a JSON object.
+ * Ask the AI for a JSON object.
  * @param {{system: string, user: string, images?: string[], temperature?: number, signal?: AbortSignal}} o
  */
-export async function grokJSON({ system, user, images = [], temperature = 0.6, maxTokens, signal }) {
+export async function aiJSON({ system, user, images = [], temperature = 0.6, maxTokens, signal }) {
   const content = images.length ? [...images.map((url) => ({ type: 'image_url', image_url: { url, detail: 'high' } })), { type: 'text', text: user }] : user;
   let res;
   try {
-    res = await fetch('/api/grok/chat', {
+    res = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: [{ role: 'system', content: system }, { role: 'user', content }], temperature, json: true, vision: images.length > 0, ...(maxTokens ? { maxTokens } : {}) }),
@@ -75,14 +75,14 @@ export async function grokJSON({ system, user, images = [], temperature = 0.6, m
 }
 
 /**
- * Stream plain text from Grok; onText(fullTextSoFar) is called as pieces arrive.
+ * Stream plain text from the AI; onText(fullTextSoFar) is called as pieces arrive.
  * Resolves with the complete text.
  */
-export async function grokStream({ system, user, images = [], temperature = 0.7, maxTokens = 16000, onText, onWait, signal }) {
+export async function aiStream({ system, user, images = [], temperature = 0.7, maxTokens = 16000, onText, onWait, signal }) {
   const content = images.length ? [...images.map((url) => ({ type: 'image_url', image_url: { url, detail: 'high' } })), { type: 'text', text: user }] : user;
   let res;
   try {
-    res = await fetch('/api/grok/chat', {
+    res = await fetch('/api/ai/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: [{ role: 'system', content: system }, { role: 'user', content }], temperature, stream: true, maxTokens, vision: images.length > 0 }),
@@ -136,8 +136,8 @@ export async function grokStream({ system, user, images = [], temperature = 0.7,
   return { text, truncated: finish === 'length' };
 }
 
-// Shrink an image (data URL or same-origin URL) to a JPEG data URL Grok can read quickly.
-export function imageForGrok(src, max = 1024) {
+// Shrink an image (data URL or same-origin URL) to a JPEG data URL the AI can read quickly.
+export function imageForAi(src, max = 1024) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';

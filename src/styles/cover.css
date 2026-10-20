@@ -1,0 +1,7 @@
+/* Cover letters. */
+
+/* ---------- cover letters ---------- */
+.letter-designs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.letter-input { font-size: 13.5px; line-height: 1.6; min-height: 260px; }
+.letter-fit { flex: none; }
+.letter-frame { display: block; border: 0; border-radius: 6px; background: #d9d9d9; transform-origin: top left; }

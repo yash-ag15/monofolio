@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useStore } from '../store.jsx';
+import { useStore } from '../app/store.jsx';
 import { Icon, Seg, downloadFile, useToast } from '../components/ui.jsx';
-import { GrokBadge, useGrokOn } from '../components/Grok.jsx';
+import { AiBadge, useAiOn } from '../components/Ai.jsx';
 import { analyzeJob } from '../resume/keywords.js';
 import { LENGTHS, LETTER_DESIGNS, TONES, candidateFacts, letterHtml, letterText, writeFromTemplate, writeWithAi } from '../cover/letter.js';
 import { loadJd } from './Ats.jsx';
@@ -12,7 +12,7 @@ const blank = (resumeId) => ({ id: uid(), resumeId, jd: loadJd(), company: '', r
 export default function Cover({ go }) {
   const { state, dispatch } = useStore();
   const toast = useToast();
-  const aiOn = useGrokOn();
+  const aiOn = useAiOn();
   const letters = state.coverLetters || [];
   const resumes = state.resumes || [];
   const [activeId, setActiveId] = useState(letters[0]?.id || '');
@@ -40,7 +40,20 @@ export default function Cover({ go }) {
   const view = letter ? { ...letter, company, role } : null;
   const html = useMemo(() => (view ? letterHtml(view, facts) : ''), [JSON.stringify(view), facts]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // the letter is laid out at real paper width; scale the preview down to fit the pane
+  const stage = useRef(null);
+  const [stageW, setStageW] = useState(0);
+  useEffect(() => {
+    const el = stage.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setStageW(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [letter?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!letter) return null;
+  const frame = letter.paper === 'a4' ? { w: 840, h: 1170 } : { w: 860, h: 1100 };
+  const fit = stageW ? Math.min(1, (stageW - 8) / frame.w) : 1;
 
   const write = async () => {
     setError('');
@@ -192,7 +205,7 @@ export default function Cover({ go }) {
               <button className="btn" onClick={write} disabled={busy}>
                 <Icon name="sparkle" /> {busy ? 'Writing…' : letter.text ? (aiOn ? 'Rewrite with AI' : 'Rewrite from template') : aiOn ? 'Write with AI' : 'Write from template'}
               </button>
-              {aiOn && <GrokBadge />}
+              {aiOn && <AiBadge />}
               {aiOn && !busy && (
                 <button className="linklike small" onClick={() => update({ text: writeFromTemplate({ facts, jd: letter.jd, company, role, why: letter.why, length: letter.length }) })}>
                   or use the offline template
@@ -263,8 +276,10 @@ export default function Cover({ go }) {
               <Icon name="download" /> PDF
             </button>
           </div>
-          <div className="resume-stage">
-            <iframe className="letter-frame" title="Cover letter preview" srcDoc={html} sandbox="allow-same-origin" />
+          <div className="resume-stage" ref={stage}>
+            <div className="letter-fit" style={{ width: frame.w * fit, height: frame.h * fit }}>
+              <iframe className="letter-frame" title="Cover letter preview" srcDoc={html} sandbox="allow-same-origin" style={{ width: frame.w, height: frame.h, transform: `scale(${fit})` }} />
+            </div>
           </div>
         </div>
       </div>

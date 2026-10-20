@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { isBlankProfile, sampleProfile, useStore } from '../store.jsx';
+import { isBlankProfile, sampleProfile, useStore } from '../app/store.jsx';
 import { Icon, ListEditor, Switch, Text, useToast } from '../components/ui.jsx';
 import { initials } from '../portfolio/render.js';
 import { extractResumeLines, parseResumeLines } from '../resume/parse.js';

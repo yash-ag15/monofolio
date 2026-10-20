@@ -1,5 +1,5 @@
 // Accounts: email + password sign-up / sign-in, Google sign-in (OAuth 2.0), and each user's saved data.
-// Used by the Vite dev server (vite.config.js) and by the production server (server.js).
+// Mounted by server/api.js, which the Next.js API route (pages/api/[...path].js) runs for every /api request.
 //
 //   GET  /api/auth/me              → { user | null, google }
 //   POST /api/auth/signup          → { name, email, password }

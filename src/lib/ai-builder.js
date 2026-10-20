@@ -2,8 +2,8 @@
 // complete portfolio as one HTML file. The code streams into the Code tab and the live preview,
 // and the build keeps running while the user moves between tools.
 
-import { grokJSON, grokStream, imageForGrok } from './grok.js';
-import { describeTraits } from './inspire.js';
+import { aiJSON, aiStream, imageForAi } from './ai.js';
+import { describeTraits } from './image-traits.js';
 
 const SYSTEM = `You are an award-winning creative front-end developer. You write ONE complete, polished personal portfolio website as a single self-contained HTML file for a college student or early-career professional.
 
@@ -214,7 +214,7 @@ async function describeImage(img, prompt, traits, signal) {
   ]
     .filter(Boolean)
     .join(' ');
-  return grokJSON({ system: VISION_SYSTEM, user, images: [img], temperature: 0.2, maxTokens: 900, signal }); // a short spec; small budgets fit free-plan limits
+  return aiJSON({ system: VISION_SYSTEM, user, images: [img], temperature: 0.2, maxTokens: 900, signal }); // a short spec; small budgets fit free-plan limits
 }
 
 // ---------- shared build state (one build at a time) ----------
@@ -304,7 +304,7 @@ ${packed}`
       emit({ phase: 'looking' });
       let spec = null;
       try {
-        spec = await describeImage(await imageForGrok(image), prompt, traits, c.signal);
+        spec = await describeImage(await imageForAi(image), prompt, traits, c.signal);
       } catch (e) {
         if (e.name === 'AbortError') throw e;
         // vision unavailable — our own colour/layout reading (already in the prompt) is used instead
@@ -322,7 +322,7 @@ ${JSON.stringify(spec)}
 MY CONTENT (JSON):`);
     }
     emit({ phase: 'writing' });
-    const { text, truncated } = await grokStream({
+    const { text, truncated } = await aiStream({
       system: edit ? EDIT_SYSTEM : SYSTEM,
       user,
       temperature: edit ? 0.3 : 0.8,

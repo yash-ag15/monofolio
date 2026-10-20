@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useReducer, useRef } from 'react';
-import { THEMES } from './portfolio/themes.js';
-import { DEMO_AVATAR } from './portfolio/demo-avatar.js';
+import { THEMES } from '../portfolio/themes.js';
+import { DEMO_AVATAR } from '../portfolio/demo-avatar.js';
 
 
 export const SECTION_KEYS = [
@@ -230,7 +230,6 @@ const initialState = () => ({
   github: { username: '', autoSync: false, lastSync: 0, user: null, repos: [] },
   tailored: [],
   coverLetters: [],
-  inspiration: [],
   // Live code editor: html = your edited copy of the portfolio, active = use it instead of the generated page,
   // fp = fingerprint of the design it was copied from (to warn when the design changes later)
   code: { html: '', active: false, fp: '' },
@@ -284,7 +283,9 @@ function migrateDemo(raw) {
 export function hydrate(savedState) {
   try {
     if (!savedState) return initialState();
-    const saved = JSON.parse(migrateDemo(JSON.stringify(savedState)));
+    // `inspiration` held images for the old Inspire page (now part of the AI composer) — drop it
+    // eslint-disable-next-line no-unused-vars
+    const { inspiration, ...saved } = JSON.parse(migrateDemo(JSON.stringify(savedState)));
     const base = initialState();
     return {
       ...base,
@@ -293,7 +294,6 @@ export function hydrate(savedState) {
       design: normalizeDesign(saved.design),
       github: { ...base.github, ...saved.github },
       appTheme: saved.appThemeChosen ? saved.appTheme : 'dark',
-      inspiration: saved.inspiration || [],
       code: { ...base.code, ...saved.code },
       resumes: saved.resumes || [],
       activeResume: saved.activeResume || '',
@@ -418,8 +418,6 @@ function reducer(state, action) {
       return { ...state, resumes: (state.resumes || []).map((r) => (r.id === action.id ? { ...r, ...action.patch, updated: Date.now() } : r)) };
     case 'code/set':
       return { ...state, code: { ...(state.code || {}), ...action.patch } };
-    case 'inspiration/set':
-      return { ...state, inspiration: action.items };
     case 'all/replace':
       return { ...initialState(), ...action.state, design: normalizeDesign(action.state.design) };
     case 'all/reset':

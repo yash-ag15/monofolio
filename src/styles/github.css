@@ -1,0 +1,18 @@
+/* Live GitHub Sync. */
+
+/* ---------- github ---------- */
+.repo-list { display: grid; gap: 8px; }
+.repo { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; background: var(--surface); }
+.repo:hover { border-color: var(--line-2); }
+.repo.on { border-color: var(--fg); }
+.repo input { margin-top: 3px; accent-color: var(--fg); }
+.repo h4 { font-size: 13.5px; font-weight: 600; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.repo p { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+.repo .meta { display: flex; gap: 14px; color: var(--muted); font-size: 11.5px; margin-top: 7px; font-family: var(--mono); }
+.gh-user { display: flex; gap: 16px; align-items: center; }
+.gh-user img { width: 56px; height: 56px; border-radius: 50%; border: 1px solid var(--line-2); }
+.lang-bars { display: grid; gap: 10px; }
+.lang-bar { display: grid; grid-template-columns: 110px 1fr 44px; gap: 10px; align-items: center; font-size: 12px; }
+
+.avatar-up { display: flex; gap: 14px; align-items: center; }
+.avatar-up .pic { width: 64px; height: 64px; border-radius: 14px; border: 1px solid var(--line-2); background: var(--bg-3) center/cover; display: grid; place-items: center; color: var(--muted); font-weight: 700; }

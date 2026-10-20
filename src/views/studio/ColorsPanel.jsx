@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Icon, Seg } from '../components/ui.jsx';
-import { PALETTES, contrast, ensureContrast, finalize, isHex, parseColorText, schemesFromColor } from '../lib/color.js';
+import { Icon, Seg } from '../../components/ui.jsx';
+import { PALETTES, contrast, ensureContrast, isHex, parseColorText, schemesFromColor } from '../../lib/color.js';
 
 const EXAMPLES = ['deep navy with gold', 'soft pastel', 'dark forest green', 'earthy tones', 'bold coral background', 'black with lime', 'white and cobalt', 'dracula', 'warm cream and rust', 'midnight purple'];
 
@@ -41,7 +41,7 @@ function ColorRow({ label, value, onChange }) {
   );
 }
 
-export default function ColorsPanel({ design, set, snapshot, traits, toast }) {
+export default function ColorsPanel({ design, set, snapshot, toast }) {
   const [text, setText] = useState('');
   const [notes, setNotes] = useState([]);
   const [base, setBase] = useState(design.colors?.accent && isHex(design.colors.accent) ? design.colors.accent : '#2563eb');
@@ -72,7 +72,6 @@ export default function ColorsPanel({ design, set, snapshot, traits, toast }) {
     apply(r.colors);
     setNotes(r.notes);
   };
-  const imageScheme = traits?.bgColor ? finalize({ bg: traits.bgColor, fg: traits.fgColor, accent: traits.accentColor }) : null;
 
   return (
     <div className="panel-body">
@@ -192,16 +191,6 @@ export default function ColorsPanel({ design, set, snapshot, traits, toast }) {
           ))}
         </div>
       </div>
-
-      {imageScheme && (
-        <div className="ctl">
-          <div className="lbl">From your inspiration image</div>
-          <div className="row" style={{ flexWrap: 'nowrap' }}>
-            <Swatch c={imageScheme} active={same(imageScheme)} onClick={() => apply(imageScheme, 'Colours taken from your image')} />
-            <span className="hint">Background, text and accent picked from the palette of the image(s) in Inspire, adjusted to stay readable.</span>
-          </div>
-        </div>
-      )}
 
       {custom && (
         <>

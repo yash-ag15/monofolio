@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useStore } from '../store.jsx';
+import { useStore } from '../app/store.jsx';
 import { Icon, Switch, useToast } from '../components/ui.jsx';
 import { renderResumeHtml } from '../resume/templates.js';
 import { analyzeJob, matchResume } from '../resume/keywords.js';
 import { applyTailoring, tailorPlan } from '../resume/tailor.js';
 import { KeywordGroups, ScoreRing, loadJd, saveJd } from './Ats.jsx';
-import { GrokBadge, useGrokOn } from '../components/Grok.jsx';
-import { grokTailor } from '../resume/grok-tailor.js';
+import { AiBadge, useAiOn } from '../components/Ai.jsx';
+import { aiTailor } from '../resume/ai-tailor.js';
 
 const SAMPLE_JD = `Software Engineer Intern – Full Stack
 About Acme Labs
@@ -40,7 +40,7 @@ export default function Tailor({ go }) {
   const [hide, setHide] = useState(null); // null = use suggestion
   const [summary, setSummary] = useState(null);
   // AI suggestions for this job: { data, busy, error } + which ones the user chose to use
-  const aiOn = useGrokOn();
+  const aiOn = useAiOn();
   const [ai, setAi] = useState({ data: null, busy: false, error: '' });
   const [useRw, setUseRw] = useState(() => new Set());
   const [useNb, setUseNb] = useState(() => new Set());
@@ -92,7 +92,7 @@ export default function Tailor({ go }) {
     setAi({ data: null, busy: true, error: '' });
     setUseRw(new Set());
     setUseNb(new Set());
-    grokTailor({ resume: base, jd, signal: c.signal })
+    aiTailor({ resume: base, jd, signal: c.signal })
       .then((data) => aiCtrl.current === c && setAi({ data, busy: false, error: '' }))
       .catch((e) => e.name !== 'AbortError' && setAi({ data: null, busy: false, error: e.message || 'The AI request failed.' }));
   };
@@ -123,7 +123,7 @@ export default function Tailor({ go }) {
   const setOpt = (k) => (v) => setOpts({ ...opts, [k]: v });
 
   const create = () => {
-    const r = tailored.resume;
+    const r = { ...tailored.resume, examples: false }; // a real resume: never fill gaps with examples
     dispatch({ type: 'resumes/set', items: [...resumes, r], active: r.id });
     toast(`Created “${r.name}”`);
     go('resume');
@@ -306,7 +306,7 @@ function AiSuggestions({ ai, onRun, useRw, useNb, toggleRw, toggleNb, picked, to
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <div className="lbl-sm">AI suggestions for this job</div>
         <span className="row" style={{ gap: 6 }}>
-          <GrokBadge />
+          <AiBadge />
           {d && !ai.busy && (
             <button className="btn ghost sm" onClick={onRun} title="Ask again">
               <Icon name="refresh" />

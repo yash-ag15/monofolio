@@ -1,7 +1,7 @@
-// Grok recruiter review for the ATS checker — complements the rule-based score with judgement:
+// AI recruiter review for the ATS checker — complements the rule-based score with judgement:
 // what a recruiter in the candidate's field would think, and concrete bullet rewrites.
 
-import { grokJSON } from '../lib/grok.js';
+import { aiJSON } from '../lib/ai.js';
 
 const SYSTEM = `You are an experienced campus recruiter and ATS specialist who screens resumes for every field —
 software, core engineering (mechanical, civil, electrical, chemical), finance, consulting, marketing, design and operations.
@@ -29,9 +29,9 @@ Rules:
 - Start every rewritten bullet with a strong past-tense verb; keep it to 1–2 lines.
 - Be specific to the field; don't suggest GitHub or coding to non-software candidates.`;
 
-export async function grokReview({ text, jd, signal }) {
+export async function aiReview({ text, jd, signal }) {
   const user = [`RESUME (plain text as an ATS extracts it):\n${String(text).slice(0, 12000)}`, jd && jd.trim().length > 40 ? `JOB DESCRIPTION:\n${jd.slice(0, 8000)}` : 'No job description given.'].join('\n\n');
-  const r = await grokJSON({ system: SYSTEM, user, temperature: 0.3, signal });
+  const r = await aiJSON({ system: SYSTEM, user, temperature: 0.3, signal });
   const arr = (v, n) => (Array.isArray(v) ? v.slice(0, n) : []);
   return {
     field: String(r.field || ''),

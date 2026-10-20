@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import App from './App.jsx';
-import Auth from './pages/Auth.jsx';
-import Landing from './pages/Landing.jsx';
+import Auth from '../views/Auth.jsx';
+import Landing from '../views/Landing.jsx';
 import { StoreProvider } from './store.jsx';
-import { ToastProvider } from './components/ui.jsx';
-import { AccountProvider, fetchMe, loadUserState, saveUserState, signOut } from './lib/account.jsx';
+import { ToastProvider } from '../components/ui.jsx';
+import { AccountProvider, fetchMe, loadUserState, saveUserState, signOut } from '../lib/account.jsx';
 
 // before the user's settings load, use the theme they had last time (dark by default)
 try {

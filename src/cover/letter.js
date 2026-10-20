@@ -1,6 +1,6 @@
 // Cover letters: AI writing (streamed), an offline template fallback, and print-ready letter designs.
 
-import { grokStream } from '../lib/grok.js';
+import { aiStream } from '../lib/ai.js';
 import { lines } from '../resume/model.js';
 import { analyzeJob, matchResume } from '../resume/keywords.js';
 import { RESUME_FONTS } from '../resume/templates.js';
@@ -83,7 +83,7 @@ export async function writeWithAi({ facts, jd, company, role, manager, tone, len
   ]
     .filter(Boolean)
     .join('\n\n');
-  const { text } = await grokStream({ system: SYSTEM, user, temperature: 0.6, maxTokens: 2500, onText, signal });
+  const { text } = await aiStream({ system: SYSTEM, user, temperature: 0.6, maxTokens: 2500, onText, signal });
   return cleanBody(text);
 }
 

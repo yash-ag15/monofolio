@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useStore } from '../store.jsx';
+import { useStore } from '../app/store.jsx';
 import { Icon, ListEditor, Seg, Switch, Text, downloadFile, useToast } from '../components/ui.jsx';
 import { Pressable, Thumb } from '../components/Thumb.jsx';
 import { RESUME_SECTION_LABELS, demoResumeData, emptyResumeData, isBlankResume, newResume, resumeDataFromProfile } from '../resume/model.js';
+import { plainExamples, showExamples, withExamples } from '../resume/examples.js';
 import { RESUME_FONTS, RESUME_TEMPLATES, renderResumeHtml, renderResumeText } from '../resume/templates.js';
 import { resumeToLatex } from '../resume/latex.js';
 import { extractResumeLines, parseResumeLines } from '../resume/parse.js';
@@ -69,10 +70,12 @@ export default function Resume({ go }) {
   const setData = (patch) => update({ data: { ...resume.data, ...patch } });
   const setStyle = (patch) => update({ style: { ...resume.style, ...patch } });
 
-  // while the resume is still empty, the preview and template thumbnails show the sample resume
-  const sample = !!resume && isBlankResume(resume.data);
-  const shown = useMemo(() => (resume && sample ? { ...resume, data: demoResumeData() } : resume), [resume, sample]);
-  const html = useMemo(() => (shown ? renderResumeHtml(shown) : ''), [shown]);
+  // parts the user hasn't written yet show the sample resume (lighter) until "Hide examples"
+  const sample = !!resume && isBlankResume(resume.data); // nothing of their own yet → nothing to download
+  const examples = resume?.examples !== false;
+  const filled = useMemo(() => (resume ? withExamples(resume) : null), [resume]);
+  const shown = resume && examples ? filled.resume : resume;
+  const html = useMemo(() => (shown ? (examples ? showExamples(renderResumeHtml(shown)) : renderResumeHtml(shown)) : ''), [shown, examples]);
 
   // count pages, show only the needed page-break guides, and size the frame
   const measure = () => {
@@ -398,7 +401,7 @@ export default function Resume({ go }) {
               <div className="tpl-grid">
                 {Object.entries(RESUME_TEMPLATES).map(([k, t]) => (
                   <Pressable key={k} className={`tpl-card ${resume.style.template === k ? 'on' : ''}`} label={`Use ${t.name}`} onActivate={() => setStyle({ template: k, font: t.font, fontSize: t.size })}>
-                    <Thumb html={renderResumeHtml({ ...shown, style: { ...resume.style, template: k, font: t.font, fontSize: t.size } }, { forPrint: true })} scale={0.2} height={150} width={830} eager />
+                    <Thumb html={plainExamples(renderResumeHtml({ ...filled.resume, style: { ...resume.style, template: k, font: t.font, fontSize: t.size } }, { forPrint: true }))} scale={0.2} height={150} width={830} eager />
                     <div className="tpl-meta">
                       <b>{t.name}</b>
                       <span className={`ats ats-${t.ats.toLowerCase()}`}>ATS: {t.ats}</span>
@@ -483,7 +486,7 @@ export default function Resume({ go }) {
             </div>
           )}
 
-          {tab === 'import' && <ImportTab current={resume} profile={state.profile} onCreate={(data, name) => { const r = newResume({ name, data }); dispatch({ type: 'resumes/set', items: [...resumes, r], active: r.id }); toast('Imported — check each section, then pick a template'); setTab('content'); }} onReplace={(data) => { update({ data }); toast('Content replaced'); setTab('content'); }} />}
+          {tab === 'import' && <ImportTab current={resume} profile={state.profile} onCreate={(data, name) => { const r = { ...newResume({ name, data }), examples: false }; dispatch({ type: 'resumes/set', items: [...resumes, r], active: r.id }); toast('Imported — check each section, then pick a template'); setTab('content'); }} onReplace={(data) => { update({ data, examples: false }); toast('Content replaced'); setTab('content'); }} />}
         </div>
 
         <div className="resume-preview">
@@ -495,6 +498,11 @@ export default function Resume({ go }) {
               </button>
             )}
             <Seg value={zoom} onChange={setZoom} options={[{ value: 'fit', label: 'Fit' }, { value: '1', label: '100%' }]} />
+            {filled?.used && (
+              <button className="btn ghost sm" onClick={() => update({ examples: !examples })} title="Examples fill the parts you haven’t written yet. They’re never downloaded.">
+                <Icon name="eye" /> {examples ? 'Hide examples' : 'Show examples'}
+              </button>
+            )}
             <span className="spacer" />
             <button className="btn ghost sm" onClick={() => {
               if (needContent()) return;
@@ -517,9 +525,12 @@ export default function Resume({ go }) {
               <Icon name="download" /> PDF
             </button>
           </div>
-          {sample && (
+          {examples && filled?.used && (
             <div className="sample-strip">
-              <Icon name="eye" size={14} /> <span>This is a <b>sample</b> so you can see the template. Fill in your details on the left and they’ll replace it.</span>
+              <Icon name="eye" size={14} />
+              <span>
+                <b>Grey text is an example</b> — it fills the parts you haven’t written yet so you can see the whole template. As you type, your words replace it. Examples are never downloaded.
+              </span>
             </div>
           )}
           <div className="resume-stage" ref={stage}>

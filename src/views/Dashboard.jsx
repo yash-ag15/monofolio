@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_DESIGN, isBlankProfile, previewProfile, useStore } from '../store.jsx';
+import { DEFAULT_DESIGN, isBlankProfile, previewProfile, useStore } from '../app/store.jsx';
 import { Icon, downloadFile, useToast } from '../components/ui.jsx';
-import { NAV } from '../nav.js';
-import { uniquenessScore } from '../portfolio/brief.js';
+import { NAV } from '../app/nav.js';
+import { uniquenessScore } from '../portfolio/uniqueness.js';
 import { THEMES, renderPortfolio } from '../portfolio/render.js';
 import { checkResume, scoreLabel } from '../resume/ats.js';
 import { Thumb } from '../components/Thumb.jsx';

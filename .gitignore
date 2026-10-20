@@ -1,10 +1,23 @@
+# dependencies and builds
 node_modules
-dist
 .next
+dist
 next-env.d.ts
-# copied from node_modules on dev/build
-public/pdf.worker.min.mjs
+.vercel
+
+# secrets — copy .env.example to .env.local
+.env
 .env.local
 .env.*.local
-# user accounts and saved data
+
+# local accounts and saved data (JSON-file storage when DATABASE_URL is empty)
 data/
+
+# copied from node_modules on dev/build (see scripts/copy-pdf-worker.mjs)
+public/pdf.worker.min.mjs
+
+# logs and OS files
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini

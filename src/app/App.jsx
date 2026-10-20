@@ -1,20 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './store.jsx';
-import { Icon } from './components/ui.jsx';
-import Dashboard from './pages/Dashboard.jsx';
-import Profile from './pages/Profile.jsx';
-import Studio from './pages/Studio.jsx';
-import GitHubSync from './pages/GitHubSync.jsx';
-import ComingSoon from './pages/ComingSoon.jsx';
-import Resume from './pages/Resume.jsx';
-import Ats from './pages/Ats.jsx';
-import Tailor from './pages/Tailor.jsx';
-import Readme from './pages/Readme.jsx';
-import Cover from './pages/Cover.jsx';
-import Card from './pages/Card.jsx';
-import { useAutoSync } from './lib/github.js';
+import { Icon } from '../components/ui.jsx';
+import Dashboard from '../views/Dashboard.jsx';
+import Profile from '../views/Profile.jsx';
+import Studio from '../views/studio/Studio.jsx';
+import GitHubSync from '../views/GitHubSync.jsx';
+import Resume from '../views/Resume.jsx';
+import Ats from '../views/Ats.jsx';
+import Tailor from '../views/Tailor.jsx';
+import Readme from '../views/Readme.jsx';
+import Cover from '../views/Cover.jsx';
+import Card from '../views/Card.jsx';
+import { useAutoSync } from '../lib/github.js';
 import { NAV } from './nav.js';
-import { useAccount, useSyncStatus } from './lib/account.jsx';
+import { useAccount, useSyncStatus } from '../lib/account.jsx';
 
 const SYNC_TEXT = { saved: 'Saved', saving: 'Saving…', offline: 'Offline', 'too-large': 'Not saved' };
 const SYNC_TITLE = { saved: 'All changes are saved to your account', saving: 'Saving your changes…', offline: 'Can’t reach the server — your changes will be saved when you’re back online', 'too-large': 'Your data is too large to save — remove big images or 3D models' };
@@ -72,11 +71,8 @@ export default function App() {
     case 'card':
       page = <Card go={go} />;
       break;
-    case 'dashboard':
-      page = <Dashboard go={go} />;
-      break;
     default:
-      page = <ComingSoon item={current} go={go} />;
+      page = <Dashboard go={go} />;
   }
 
   return (

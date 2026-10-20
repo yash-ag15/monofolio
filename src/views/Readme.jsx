@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { marked } from 'marked';
-import { isBlankProfile, previewProfile, useStore } from '../store.jsx';
+import { isBlankProfile, previewProfile, useStore } from '../app/store.jsx';
 import { Icon, Seg, Switch, downloadFile, useToast } from '../components/ui.jsx';
 import { CARD_THEMES, DEFAULT_OPTS, README_TEMPLATES, SNAKE_WORKFLOW, buildReadme } from '../readme/templates.js';
 

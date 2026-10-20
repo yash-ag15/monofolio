@@ -1,36 +1,36 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon, Seg } from './ui.jsx';
-import { grokStatus, loadGrokStatus, onGrokStatus } from '../lib/grok.js';
+import { aiStatus, loadAiStatus, onAiStatus } from '../lib/ai.js';
 import { cancelBuild, clearBuild, getBuild, startBuild, subscribeBuild } from '../lib/ai-builder.js';
-import { grokReview } from '../resume/grok-review.js';
-import { analyzeImage, readImageFile, readImageUrl } from '../lib/inspire.js';
+import { aiReview } from '../resume/ai-review.js';
+import { analyzeImage, readImageFile, readImageUrl } from '../lib/image-traits.js';
 
 // null while checking, then true / false — the server decides (it holds the owner's key)
-export function useGrokOn() {
-  const [on, setOn] = useState(() => grokStatus()?.enabled ?? null);
+export function useAiOn() {
+  const [on, setOn] = useState(() => aiStatus()?.enabled ?? null);
   useEffect(() => {
-    loadGrokStatus().then((s) => setOn(s.enabled));
-    return onGrokStatus((s) => setOn(s.enabled));
+    loadAiStatus().then((s) => setOn(s.enabled));
+    return onAiStatus((s) => setOn(s.enabled));
   }, []);
   return on;
 }
 
-export function GrokBadge() {
-  const on = useGrokOn();
+export function AiBadge() {
+  const on = useAiOn();
   if (on === null) return null;
   return on ? (
-    <span className="grok-badge on" title="AI enabled">
+    <span className="ai-badge on" title="AI enabled">
       <i /> AI
     </span>
   ) : (
-    <span className="grok-badge">AI unavailable</span>
+    <span className="ai-badge">AI unavailable</span>
   );
 }
 
 // What visitors see when AI is off. The setup steps are shown only to the site owner in dev mode.
-export function GrokSetup() {
+export function AiSetup() {
   return (
-    <div className="grok-setup">
+    <div className="ai-setup">
       <b>AI features are unavailable right now</b>
       <p>Everything else still works — the offline tools on this page don’t need AI.</p>
       {process.env.NODE_ENV !== 'production' && (
@@ -42,8 +42,8 @@ export function GrokSetup() {
   );
 }
 
-// Runs an async Grok call with loading / error / cancel handling.
-function useGrok() {
+// Runs an async AI call with loading / error / cancel handling.
+function useAi() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const ctrl = useRef(null);
@@ -70,7 +70,7 @@ function useGrok() {
 }
 
 const Thinking = ({ label, onCancel }) => (
-  <div className="grok-thinking">
+  <div className="ai-thinking">
     <span className="dots">
       <i />
       <i />
@@ -184,7 +184,7 @@ const EXAMPLES = [
 const CHANGE_EXAMPLES = ['Make it darker with a glowing gradient hero', 'Add a timeline for my experience', 'Bigger project cards with a hover tilt', 'Use a serif font for headings'];
 
 export function AiComposer({ profile, blankProfile, code, dispatch, toast, compact, getThemeHtml, themeName }) {
-  const on = useGrokOn();
+  const on = useAiOn();
   const b = useBuild();
   const [text, setText] = useState('');
   const [img, setImg] = useState(null); // { src, name, traits }
@@ -200,7 +200,7 @@ export function AiComposer({ profile, blankProfile, code, dispatch, toast, compa
     setMode(canEdit ? 'edit' : 'new'); // by default, prompts change what the user already has
   }, [canEdit]);
   if (on === null) return null;
-  if (!on) return <GrokSetup />;
+  if (!on) return <AiSetup />;
   const busy = b.status === 'running';
 
   const attach = async (load, name) => {
@@ -396,20 +396,20 @@ export function AiComposer({ profile, blankProfile, code, dispatch, toast, compa
 }
 
 // ---------- ATS page ----------
-export function GrokReviewCard({ text, jd, onCopy }) {
-  const on = useGrokOn();
+export function AiReviewCard({ text, jd, onCopy }) {
+  const on = useAiOn();
   const [review, setReview] = useState(null);
-  const g = useGrok();
+  const g = useAi();
   const go = async () => {
-    const r = await g.run((signal) => grokReview({ text, jd, signal }));
+    const r = await g.run((signal) => aiReview({ text, jd, signal }));
     if (r) setReview(r);
   };
   return (
-    <section className="r-card grok-review" id="r-grok">
+    <section className="r-card ai-review" id="r-ai">
       <div className="r-head">
         <div>
           <h3>
-            Recruiter review <GrokBadge />
+            Recruiter review <AiBadge />
           </h3>
           <p>An AI second opinion: how a recruiter in your field would read this resume{jd ? ' for this job' : ''}, with rewritten bullets. Your resume text{jd ? ' and the job post' : ''} is sent to our AI provider.</p>
         </div>
@@ -424,7 +424,7 @@ export function GrokReviewCard({ text, jd, onCopy }) {
         )}
       </div>
       {on === null ? null : !on ? (
-        <GrokSetup />
+        <AiSetup />
       ) : g.busy ? (
         <Thinking label="Reading your resume like a recruiter…" onCancel={g.cancel} />
       ) : !review ? (
@@ -434,7 +434,7 @@ export function GrokReviewCard({ text, jd, onCopy }) {
       ) : null}
       {g.error && <div className="contrast bad" style={{ marginTop: 12 }}>{g.error}</div>}
       {review && (
-        <div className="grok-review-body">
+        <div className="ai-review-body">
           <p className="verdict">
             “{review.verdict}”{review.field && <span> · {review.field}</span>}
           </p>
