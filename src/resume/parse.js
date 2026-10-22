@@ -103,7 +103,18 @@ const findDates = (s) => {
   return { start: '', end: m[0].trim(), rest };
 };
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const LINK_LABEL = /^(preview|live|website|frontend|backend|repo|github|demo|link|source|code|view \w+)$/i; // "Name | Stack | Preview"
 const LINK_WORDS = /\b(view (project|post|certificate|credential|demo|live)|live demo|github|demo|link|source|code)\b\s*$/i;
+
+// A non-bullet line right after a bullet is that bullet wrapping onto the next line when it starts
+// lowercase, or when the line above ran to the margin mid-sentence ("…from the" → "OpenWeather API.").
+// Entry headers carry columns, pipes, links or dates, so those always start a new entry.
+const WRAP_WIDTH = 70;
+const looksLikeHead = (l) => /[|\t]|https?:/.test(l.text) || (l.urls || []).length > 0 || DATE_RE.test(l.text);
+const continuesBullet = (cur, l) => {
+  if (!cur || !cur.bullets.length || looksLikeHead(l)) return false;
+  return /^[a-z(]/.test(l.text) || (cur.lastLen >= WRAP_WIDTH && !/[.!?:]$/.test(cur.bullets[cur.bullets.length - 1]));
+};
 
 // split a section's lines into entries: header lines followed by bullet lines
 function entries(lines) {
@@ -114,8 +125,21 @@ function entries(lines) {
     if (isBullet) {
       if (!cur) cur = { head: [], bullets: [], urls: [] };
       cur.bullets.push(l.text.replace(BULLET_RE, '').trim());
-    } else if (cur && cur.bullets.length && /^[a-z(]/.test(l.text) && !/[|	]|https?:/.test(l.text)) {
+      cur.lastLen = l.text.length;
+    } else if (cur && cur.bullets.length && !cur.bullets[cur.bullets.length - 1]) {
+      // some PDFs put the bullet glyph on its own baseline — its text is the next line,
+      // unless that line is part of the entry's header (a decorative "•" before "Bachelor of Science …  2020 – 2024")
+      if (cur.bullets.length === 1 && looksLikeHead(l)) {
+        cur.bullets.pop();
+        cur.head.push(l.text);
+        cur.urls.push(...(l.urls || []));
+      } else {
+        cur.bullets[cur.bullets.length - 1] = l.text;
+        cur.lastLen = l.text.length;
+      }
+    } else if (continuesBullet(cur, l)) {
       cur.bullets[cur.bullets.length - 1] += ' ' + l.text; // wrapped bullet continues
+      cur.lastLen = l.text.length;
     } else {
       if (!cur || cur.bullets.length) {
         cur = { head: [], bullets: [], urls: [] };
@@ -126,6 +150,7 @@ function entries(lines) {
     }
   });
   if (cur && !out.includes(cur)) out.push(cur);
+  out.forEach((e) => (e.bullets = e.bullets.filter(Boolean)));
   return out;
 }
 
@@ -163,7 +188,7 @@ function parseEducation(lines) {
     const degreeLine = h1[0] || '';
     return {
       school: h0[0] || '',
-      degree: degreeLine.replace(scoreM ? scoreM[0] : '§', '').replace(/[,;–-]\s*$/, '').trim(),
+      degree: degreeLine.replace(scoreM ? scoreM[0] : '§', '').replace(/\(\s*\)|\[\s*\]/g, '').replace(/[,;–-]\s*$/, '').trim(),
       start: cap(start),
       end: cap(end),
       location: h0[1] && !/\d/.test(h0[1]) ? h0[1] : h1[1] && !/\d/.test(h1[1]) ? h1[1] : '',
@@ -173,11 +198,25 @@ function parseEducation(lines) {
   });
 }
 
+// "Python, Django, Redis" or "Tech: Go, Redis" — a short comma list, not a sentence
+const STACK_LABEL = /^(tech(nologies)?( stack| used)?|stack|built with|tools)\s*:\s*/i;
+const isTechList = (s) => {
+  const list = String(s || '').replace(STACK_LABEL, '');
+  const items = list.split(/\s*,\s*/);
+  return items.length >= 2 && !/[.!?]$|[!?:]/.test(list) && !/\b(and|or|to|for|using|with|by|from)\b/i.test(list) && items.every((x) => x && x.split(/\s+/).length <= 3);
+};
+
 function parseProjects(lines) {
   return entries(lines).map((e) => {
     const parts = splitTab(e.head.join('\t'));
-    let [name = '', tech = ''] = (parts[0] || '').split(/\s*\|\s*/);
+    let [name = '', tech = ''] = (parts[0] || '').split(/\s*\|\s*/).filter((x, i) => !i || !LINK_LABEL.test(x));
     if (!tech && parts[1] && !LINK_WORDS.test(parts[1]) && !DATE_RE.test(parts[1])) tech = parts[1];
+    // the stack on its own line under the title, whether or not it was set as a bullet
+    const stackLine = !tech && [e.head[1], e.bullets[0]].find(isTechList);
+    if (stackLine) {
+      tech = stackLine.replace(STACK_LABEL, '');
+      if (e.bullets[0] === stackLine) e.bullets.shift();
+    }
     const dateM = e.head.join(' ').match(DATE_RE);
     const label = parts.find((p) => LINK_WORDS.test(p));
     const url = e.urls[e.urls.length - 1] || (e.head.join(' ').match(/https?:\/\/\S+/) || [])[0] || '';

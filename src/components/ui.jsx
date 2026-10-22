@@ -54,7 +54,8 @@ const paths = {
   alert: 'M12 7.5v6M12 16.8v.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z',
 };
 
-export function Icon({ name, size, ...rest }) {
+// size is a default only — CSS like `.btn svg { width: 15px }` still wins; without it a bare icon fills its container
+export function Icon({ name, size = 18, ...rest }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width={size} height={size} aria-hidden="true" {...rest}>
       <path d={paths[name]} />

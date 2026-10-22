@@ -17,7 +17,7 @@ import {
   splitList,
   visibleSections,
 } from './content.js';
-import { FONT_PAIRS, SCENES, THEMES } from './themes.js';
+import { FONT_PAIRS, SCENES, THEMES, fontStack } from './themes.js';
 import { desktopRuntime, effectsRuntime, terminalRuntime, threeRuntime } from './runtime.js';
 import { animRuntime } from './anim-runtime.js';
 import { isHex, luminance, onColor } from '../lib/color.js';
@@ -54,7 +54,7 @@ function accentCss() {
 `;
 }
 
-export { FONT_PAIRS, LAYOUTS, THEMES, SCENES, CURSORS, THEME_CATEGORIES } from './themes.js';
+export { FONT_PAIRS, fontStack, LAYOUTS, THEMES, SCENES, CURSORS, THEME_CATEGORIES } from './themes.js';
 export { esc, safeUrl, hashString, mulberry32, initials, signatureSvg } from './content.js';
 export const slugName = (s) => slugify(s);
 
@@ -469,7 +469,7 @@ function buildCss(d) {
   return `
 :root{--bg:${paper.bg};--fg:${paper.fg};--accent:${accent};
 --muted:color-mix(in srgb,var(--fg) 60%,var(--bg));--line:color-mix(in srgb,var(--fg) 13%,var(--bg));--line-strong:color-mix(in srgb,var(--fg) 30%,var(--bg));
---card:color-mix(in srgb,var(--fg) 4%,var(--bg));--font-head:'${pair.head}',system-ui,sans-serif;--font-body:'${pair.body}',system-ui,sans-serif;
+--card:color-mix(in srgb,var(--fg) 4%,var(--bg));--font-head:${fontStack(pair.head)};--font-body:${fontStack(pair.body)};
 --mono:'JetBrains Mono','IBM Plex Mono',ui-monospace,monospace;--r:${radius}px;--bw:${bw};--pad:${DENSITY[d.density] || DENSITY.normal};--h1:${scale.h1};--h2:${scale.h2};--statement:${scale.statement};--hw:${hw};--heavy:${heavy}}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}

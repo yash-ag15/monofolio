@@ -67,3 +67,51 @@ test('an empty file explains what went wrong', () => {
   const r = parseResumeLines([]);
   assert.match(r.warnings[0], /No text found/);
 });
+
+test('a bullet wrapping onto a capitalised line stays one bullet, not a new project', () => {
+  const { data } = parse(`
+    Meera Iyer
+    meera@mail.com
+    PROJECTS
+    Weather Dashboard | Vue, Flask | Preview
+    – Built a dashboard that shows hourly forecasts for any city, refreshing every few minutes from the
+    OpenWeather API.
+    – Added saved locations.
+    Library Manager | Java, SQLite
+    – Wrote a desktop app for issuing and returning books with due-date reminders and fines kept in a local
+    SQLite database.
+  `);
+  assert.deepEqual(data.projects.map((p) => [p.name, p.tech]), [['Weather Dashboard', 'Vue, Flask'], ['Library Manager', 'Java, SQLite']]);
+  assert.equal(data.projects[0].bullets.split('\n').length, 2);
+  assert.match(data.projects[0].bullets, /from the OpenWeather API\./);
+});
+
+test('a bullet glyph on its own line: tech-stack line becomes the tech, degree line stays in the header', () => {
+  const { data } = parse(`
+    Kabir Shah
+    kabir@mail.com
+    EDUCATION
+    Sample University    Springfield, USA
+    •
+    Bachelor of Science in Physics (GPA: 3.6)    2020 – 2024
+    PROJECTS
+    Recipe Finder
+    •
+    Python, Django, Redis
+    • Indexed 5,000 recipes so searches return in under a second.
+  `);
+  assert.deepEqual(data.education.map((e) => [e.school, e.degree]), [['Sample University', 'Bachelor of Science in Physics']]);
+  assert.deepEqual(data.projects.map((p) => [p.name, p.tech, p.bullets]), [['Recipe Finder', 'Python, Django, Redis', 'Indexed 5,000 recipes so searches return in under a second.']]);
+});
+
+test('a first bullet that is a sentence with commas is not mistaken for a tech stack', () => {
+  const { data } = parse(`
+    Ana Das
+    ana@mail.com
+    PROJECTS
+    Expense Tracker
+    • Designed schemas, wrote APIs and shipped dashboards
+  `);
+  assert.equal(data.projects[0].tech, '');
+  assert.equal(data.projects[0].bullets, 'Designed schemas, wrote APIs and shipped dashboards');
+});

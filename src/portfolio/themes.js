@@ -19,6 +19,13 @@ export const FONT_PAIRS = {
   pixel: { label: 'Silkscreen — pixel', head: 'Silkscreen', body: 'IBM Plex Mono', weight: 400, families: ['Silkscreen:wght@400;700', 'IBM+Plex+Mono:wght@400;500;600'] },
 };
 
+// Fallbacks match each face's category, so a serif or monospace pair still looks right while
+// the web font loads (or on a device without it, e.g. Times New Roman on Android).
+const SERIF_FACES = new Set(['Instrument Serif', 'DM Serif Display', 'Playfair Display', 'Source Serif 4', 'Fraunces', 'Times New Roman']);
+const MONO_FACES = new Set(['JetBrains Mono', 'IBM Plex Mono', 'Special Elite', 'Courier Prime', 'Silkscreen']);
+export const fontStack = (face) =>
+  `'${face}',${SERIF_FACES.has(face) ? "Georgia,'Times New Roman',serif" : MONO_FACES.has(face) ? "ui-monospace,'Courier New',monospace" : 'system-ui,sans-serif'}`;
+
 // Each theme is a different art direction with its own page structure.
 import { SKINS } from './skins.js';
 import { SKINS_2 } from './skins2.js';

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { marked } from 'marked';
 import { isBlankProfile, previewProfile, useStore } from '../app/store.jsx';
 import { Icon, Seg, Switch, downloadFile, useToast } from '../components/ui.jsx';
-import { CARD_THEMES, DEFAULT_OPTS, README_TEMPLATES, SNAKE_WORKFLOW, buildReadme } from '../readme/templates.js';
+import { CARD_HOSTS, CARD_THEMES, DEFAULT_OPTS, README_TEMPLATES, SNAKE_WORKFLOW, buildReadme } from '../readme/templates.js';
 
 const TOGGLES = [
   ['stats', 'GitHub stats card'],
@@ -18,8 +18,13 @@ const TOGGLES = [
 ];
 
 // GitHub-like rendering of the README (light / dark), shown in a sandboxed frame — no scripts run
+// Card images go through our server (/api/card) — some networks can't reach *.vercel.app directly.
+// The README you copy keeps the original links; GitHub loads those from its own servers.
+const CARD_SRC = new RegExp(`src="(https://(?:${CARD_HOSTS.map((h) => h.replace(/\./g, '\\.')).join('|')})/[^"]*)"`, 'g');
+const viaProxy = (html) => html.replace(CARD_SRC, (_, url) => `src="${window.location.origin}/api/card?u=${encodeURIComponent(url.replace(/&amp;/g, '&'))}"`);
+
 function previewDoc(md, dark, username) {
-  const html = marked.parse(md || '', { gfm: true });
+  const html = viaProxy(marked.parse(md || '', { gfm: true }));
   const c = dark
     ? { bg: '#0d1117', fg: '#f0f6fc', border: '#3d444d', muted: '#9198a1', link: '#4493f8', code: '#151b23', page: '#010409' }
     : { bg: '#ffffff', fg: '#1f2328', border: '#d1d9e0', muted: '#59636e', link: '#0969da', code: '#f6f8fa', page: '#f6f8fa' };

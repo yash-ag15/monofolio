@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { COLOR_KEYS, DEFAULT_DESIGN, SECTION_LABELS, isBlankProfile, previewProfile, useStore, withFreshLook } from '../../app/store.jsx';
 import { Icon, Seg, Switch, downloadFile, useToast } from '../../components/ui.jsx';
-import { CURSORS, FONT_PAIRS, SCENES, THEMES, THEME_CATEGORIES, hashString, renderPortfolio, scenePoster, signatureSvg, slugName } from '../../portfolio/render.js';
+import { CURSORS, FONT_PAIRS, SCENES, fontStack, THEMES, THEME_CATEGORIES, hashString, renderPortfolio, scenePoster, signatureSvg, slugName } from '../../portfolio/render.js';
 import { fingerprint, uniquenessScore } from '../../portfolio/uniqueness.js';
 import ColorsPanel from './ColorsPanel.jsx';
 import CodePanel from './CodePanel.jsx';
@@ -390,7 +390,7 @@ export default function Studio({ go }) {
                 <div className="opt-grid">
                   {Object.entries(FONT_PAIRS).map(([k, f]) => (
                     <button key={k} className={`opt ${design.fontPair === k ? 'on' : ''}`} onClick={() => set({ fontPair: k })} disabled={base === 'terminal' && k !== 'mono'}>
-                      <span className="font-sample" style={{ fontFamily: `'${f.head}', serif` }}>
+                      <span className="font-sample" style={{ fontFamily: fontStack(f.head) }}>
                         Ag
                       </span>
                       <b>{f.label.split(' — ')[0]}</b>

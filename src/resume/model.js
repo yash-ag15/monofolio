@@ -25,6 +25,7 @@ export const DEFAULT_RESUME_STYLE = {
   accent: '#1f4e79',
   icons: true,
   linkStyle: 'label', // label ("View Project") | url
+  fill: 0, // px added above each section by “Fit to one page” so the page ends at the bottom margin
 };
 
 export const emptyResumeData = () => ({

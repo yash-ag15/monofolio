@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { isBlankProfile, sampleProfile, useStore } from '../app/store.jsx';
 import { Icon, ListEditor, Switch, Text, useToast } from '../components/ui.jsx';
 import { initials } from '../portfolio/render.js';
@@ -11,23 +11,31 @@ function ResumeImport({ profile, onApply, onClose }) {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
   const [drag, setDrag] = useState(false);
+  const run = useRef(0); // bumped on cancel so a resume still being read is ignored
   const blank = isBlankProfile(profile);
   const read = async (file) => {
     if (!file) return;
+    const id = ++run.current;
     setBusy(true);
     setError('');
     setResult(null);
     try {
-      const parsed = parseResumeLines(await extractResumeLines(file));
+      const lines = await extractResumeLines(file);
+      if (id !== run.current) return;
+      const parsed = parseResumeLines(lines);
       const incoming = profileFromResume(parsed.data);
       const found = importSummary(incoming).filter(([, v]) => v);
       if (!found.length) throw new Error(parsed.warnings[0] || 'We couldn’t find anything to import in that file.');
       setResult({ incoming, warnings: parsed.warnings, file: file.name });
     } catch (e) {
-      setError(e.message || 'Could not read that file.');
+      if (id === run.current) setError(e.message || 'Could not read that file.');
     } finally {
-      setBusy(false);
+      if (id === run.current) setBusy(false);
     }
+  };
+  const cancelRead = () => {
+    run.current++;
+    setBusy(false);
   };
   const input = <input type="file" accept=".pdf,.docx,.txt,application/pdf" hidden onChange={(e) => (read(e.target.files[0]), (e.target.value = ''))} />;
 
@@ -57,15 +65,15 @@ function ResumeImport({ profile, onApply, onClose }) {
         )}
         <div className="row">
           {blank ? (
-            <button className="btn" onClick={() => onApply(result.incoming, 'replace')}>
+            <button className="btn" onClick={() => onApply(result.incoming, 'replace', result.file)}>
               <Icon name="check" /> Fill my profile
             </button>
           ) : (
             <>
-              <button className="btn" onClick={() => onApply(result.incoming, 'add')}>
+              <button className="btn" onClick={() => onApply(result.incoming, 'add', result.file)}>
                 <Icon name="plus" /> Add what’s missing
               </button>
-              <button className="btn secondary" onClick={() => confirm('Replace your details with the ones from this resume? Sections in the resume overwrite yours.') && onApply(result.incoming, 'replace')}>
+              <button className="btn secondary" onClick={() => confirm('Replace your details with the ones from this resume? Sections in the resume overwrite yours.') && onApply(result.incoming, 'replace', result.file)}>
                 Replace with resume
               </button>
             </>
@@ -82,6 +90,8 @@ function ResumeImport({ profile, onApply, onClose }) {
         onDragLeave={() => setDrag(false)}
         onDrop={(e) => (e.preventDefault(), setDrag(false), read(e.dataTransfer.files[0]))}
       >
+        {/* first, so clicking the box opens the file picker — a label activates its first button or input */}
+        {input}
         <span className="pi-icon">
           <Icon name="upload" size={20} />
         </span>
@@ -90,13 +100,18 @@ function ResumeImport({ profile, onApply, onClose }) {
           <span>PDF, Word (.docx) or text · read on your device · or type your details below — the grey “e.g.” text is just an example.</span>
           {error && <em className="pi-err">{error}</em>}
         </span>
-        <span className="btn secondary sm">Choose file</span>
-        {onClose && (
+        {busy ? (
+          <button type="button" className="btn ghost sm" onClick={(e) => (e.preventDefault(), cancelRead())}>
+            Cancel
+          </button>
+        ) : (
+          <span className="btn secondary sm">Choose file</span>
+        )}
+        {onClose && !busy && (
           <button type="button" className="btn ghost icon" title="Close" onClick={(e) => (e.preventDefault(), onClose())}>
             <Icon name="x" />
           </button>
         )}
-        {input}
       </label>
   );
 }
@@ -194,13 +209,21 @@ export default function Profile({ go }) {
   const toast = useToast();
   const blank = isBlankProfile(p);
   const [importOpen, setImportOpen] = useState(false);
-  const applyImport = (incoming, mode) => {
+  const [lastImport, setLastImport] = useState(null); // the profile from before the last import, so it can be undone
+  const applyImport = (incoming, mode, file) => {
     const { profile, changed, added } = mergeProfile(p, incoming, mode);
     dispatch({ type: 'profile/set', profile });
+    setLastImport({ before: p, file });
     setImportOpen(false);
     setTab('basics');
     const parts = [changed.length && `${changed.length} detail${changed.length === 1 ? '' : 's'}`, added && `${added} item${added === 1 ? '' : 's'}`].filter(Boolean);
     toast(parts.length ? `Imported ${parts.join(' and ')} — check each tab` : 'Nothing new to add — your profile already has all of it');
+  };
+
+  const undoImport = () => {
+    dispatch({ type: 'profile/set', profile: lastImport.before });
+    setLastImport(null);
+    toast('Import undone — your profile is back to how it was');
   };
 
   return (
@@ -222,7 +245,22 @@ export default function Profile({ go }) {
         </div>
       </div>
 
-      {(blank || importOpen) && <ResumeImport profile={p} onApply={applyImport} onClose={blank ? undefined : () => setImportOpen(false)} />}
+      {lastImport && !importOpen && (
+        <div className="pi-done">
+          <Icon name="check" size={18} />
+          <span>
+            Filled from <b>“{lastImport.file}”</b>. Not what you wanted?
+          </span>
+          <button className="btn secondary sm" onClick={undoImport}>
+            <Icon name="undo" /> Undo import
+          </button>
+          <button className="btn ghost icon" title="Dismiss" aria-label="Dismiss" onClick={() => setLastImport(null)}>
+            <Icon name="x" />
+          </button>
+        </div>
+      )}
+
+      {((blank && !lastImport) || importOpen) && <ResumeImport profile={p} onApply={applyImport} onClose={blank ? undefined : () => setImportOpen(false)} />}
 
       <div className="tabs" role="tablist">
         {TABS.map((t) => (
@@ -302,7 +340,7 @@ export default function Profile({ go }) {
       {tab === 'projects' && (
         <>
           <div className="card card-pad row" style={{ marginBottom: 16 }}>
-            <Icon name="github" />
+            <Icon name="github" size={20} style={{ flex: 'none' }} />
             <span className="spacer">Import projects straight from your GitHub repositories and keep stars in sync.</span>
             <button className="btn secondary sm" onClick={() => go('github')}>
               Open GitHub Sync

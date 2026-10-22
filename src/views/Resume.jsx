@@ -25,6 +25,7 @@ const TABS = [
 const BULLET_HINT = 'One bullet per line. Start with an action verb and add a number — e.g. “Reduced load time by 40% by…”.';
 // gentlest change first: spacing, then margins, then font size (never below 9pt)
 const FIT_STEPS = [
+  (s) => (s.fill ? { fill: 0 } : null), // undo an earlier fit's stretch first
   (s) => (s.spacing === 'relaxed' ? { spacing: 'normal' } : null),
   (s) => (s.fontSize > 10.5 ? { fontSize: +(s.fontSize - 0.25).toFixed(2) } : null),
   (s) => (s.spacing !== 'compact' ? { spacing: 'compact' } : null),
@@ -47,6 +48,8 @@ export default function Resume({ go }) {
   const [zoom, setZoom] = useState('fit');
   const [fitting, setFitting] = useState(false);
   const fitRef = useRef(false);
+  const filledRef = useRef(false); // this fit already spread the leftover space
+  const spare = useRef({ gap: 0, sections: 0 }); // empty space under a one-page resume, from measure()
   const frame = useRef(null);
   const stage = useRef(null);
 
@@ -76,6 +79,10 @@ export default function Resume({ go }) {
   const filled = useMemo(() => (resume ? withExamples(resume) : null), [resume]);
   const shown = resume && examples ? filled.resume : resume;
   const html = useMemo(() => (shown ? (examples ? showExamples(renderResumeHtml(shown)) : renderResumeHtml(shown)) : ''), [shown, examples]);
+  // Examples are never downloaded, so while they're showing, pages are counted (and "Fit to one page"
+  // works) on a hidden copy without them — otherwise the PDF comes out shorter than the preview.
+  const measureHtml = useMemo(() => (resume && examples && filled?.used ? renderResumeHtml(resume) : ''), [resume, examples, filled]);
+  const measureFrame = useRef(null);
 
   // count pages, show only the needed page-break guides, and size the frame
   const measure = () => {
@@ -83,17 +90,27 @@ export default function Resume({ go }) {
     const page = doc?.getElementById('page');
     if (!page) return 1;
     page.style.minHeight = '';
+    const mdoc = measureHtml ? measureFrame.current?.contentDocument : doc;
+    const mpage = mdoc?.getElementById('page');
+    const n = mpage ? countPages(mpage) : pages; // the hidden copy may still be loading
+    const cs = doc.defaultView.getComputedStyle(page);
+    const pageH = parseFloat(cs.minHeight) || page.offsetHeight;
+    page.style.minHeight = `${pageH * n}px`;
+    doc.querySelectorAll('.pb').forEach((g, i) => (g.style.display = i < n - 1 ? '' : 'none'));
+    setPages(n);
+    setDims({ w: page.offsetWidth + 44, h: page.offsetHeight + 44 });
+    return n;
+  };
+  const countPages = (page) => {
+    const doc = page.ownerDocument;
     const cs = doc.defaultView.getComputedStyle(page);
     const pageH = parseFloat(cs.minHeight) || page.offsetHeight;
     let bottom = 0;
     [...page.children].forEach((c) => {
       if (!c.classList.contains('pb')) bottom = Math.max(bottom, c.offsetTop + c.offsetHeight);
     });
-    const n = Math.max(1, Math.ceil((bottom + (parseFloat(cs.paddingBottom) || 0) - 2) / pageH));
-    page.style.minHeight = `${pageH * n}px`;
-    doc.querySelectorAll('.pb').forEach((g, i) => (g.style.display = i < n - 1 ? '' : 'none'));
-    setPages(n);
-    setDims({ w: page.offsetWidth + 44, h: page.offsetHeight + 44 });
+    const n = Math.max(1, Math.ceil((bottom + (parseFloat(cs.paddingBottom) || 0) - 0.5) / pageH)); // tight, so the count matches the PDF
+    spare.current = { gap: n === 1 ? pageH - bottom - (parseFloat(cs.paddingBottom) || 0) : 0, sections: doc.querySelectorAll('.page > .sec').length };
     return n;
   };
 
@@ -101,6 +118,14 @@ export default function Resume({ go }) {
   const fitStep = (n) => {
     if (!fitRef.current) return;
     if (n <= 1) {
+      // the shrink steps are coarse and can leave a big empty band at the bottom — share it out between
+      // the sections so the page ends at the bottom margin, in the preview and the PDF alike
+      const { gap, sections } = spare.current;
+      const extra = sections ? Math.floor((gap - 4) / sections) : 0;
+      if (!filledRef.current && extra >= 1) {
+        filledRef.current = true;
+        return setStyle({ fill: (resume.style.fill || 0) + extra });
+      }
       fitRef.current = false;
       setFitting(false);
       toast('Fits on one page');
@@ -116,12 +141,14 @@ export default function Resume({ go }) {
   };
   const startFit = () => {
     fitRef.current = true;
+    filledRef.current = false;
     setFitting(true);
     fitStep(pages);
   };
-  const onFrameLoad = () => {
-    const doc = frame.current?.contentDocument;
-    const run = () => fitStep(measure());
+  // the frame that's measured drives "Fit to one page"; the other one only re-lays out the preview
+  const onFrameLoad = (measured) => () => {
+    const doc = (measured && measureHtml ? measureFrame : frame).current?.contentDocument;
+    const run = () => (measured ? fitStep(measure()) : measure());
     measure();
     if (doc?.fonts?.ready) doc.fonts.ready.then(run);
     else run();
@@ -535,7 +562,8 @@ export default function Resume({ go }) {
           )}
           <div className="resume-stage" ref={stage}>
             <div className="resume-sheet" style={{ width: dims.w * scale, height: dims.h * scale }}>
-              <iframe ref={frame} className="resume-frame" title="Resume preview" srcDoc={html} onLoad={onFrameLoad} sandbox="allow-same-origin" style={{ width: dims.w, height: dims.h, transform: `scale(${scale})` }} />
+              <iframe ref={frame} className="resume-frame" title="Resume preview" srcDoc={html} onLoad={onFrameLoad(!measureHtml)} sandbox="allow-same-origin" style={{ width: dims.w, height: dims.h, transform: `scale(${scale})` }} />
+              {measureHtml && <iframe ref={measureFrame} className="resume-measure" title="" aria-hidden="true" tabIndex={-1} srcDoc={measureHtml} onLoad={onFrameLoad(true)} sandbox="allow-same-origin" />}
             </div>
           </div>
         </div>

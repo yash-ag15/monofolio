@@ -3,16 +3,21 @@
 /* Dev Identity: import from resume */
 .pi-drop { display: flex; align-items: center; gap: 16px; padding: 18px 20px; margin-bottom: 18px; border: 1.5px dashed var(--line-2); border-radius: 14px; background: var(--surface); cursor: pointer; transition: border-color 0.15s, background 0.15s; }
 .pi-drop:hover, .pi-drop.drag { border-color: var(--fg); background: var(--surface-2); }
-.pi-drop.busy { opacity: 0.65; pointer-events: none; }
+.pi-drop.busy { cursor: progress; }
+.pi-drop.busy .pi-icon { opacity: 0.6; }
 .pi-icon { width: 42px; height: 42px; flex: none; border-radius: 12px; display: grid; place-items: center; background: var(--fg); color: var(--bg); }
 .pi-text { flex: 1; min-width: 0; display: grid; gap: 4px; }
 .pi-text b { font-size: 14px; }
 .pi-text span { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
 .pi-err { font-style: normal; font-size: 12.5px; color: #e5484d; }
 .pi-review { margin-bottom: 18px; }
+.pi-done { display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 18px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); font-size: 13.5px; }
+.pi-done > svg { flex: none; color: var(--fg); }
+.pi-done > span { flex: 1; min-width: 0; color: var(--muted); }
+.pi-done b { color: var(--fg); font-weight: 600; }
 .pi-found { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .pi-found div { display: grid; gap: 2px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); min-width: 0; }
 .pi-found div.none { opacity: 0.45; }
 .pi-found span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .pi-found b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-@media (max-width: 640px) { .pi-drop { flex-wrap: wrap; } .pi-drop .btn { width: 100%; justify-content: center; } }
+@media (max-width: 640px) { .pi-drop, .pi-done { flex-wrap: wrap; } .pi-drop .btn { width: 100%; justify-content: center; } }

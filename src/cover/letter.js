@@ -3,7 +3,7 @@
 import { aiStream } from '../lib/ai.js';
 import { lines } from '../resume/model.js';
 import { analyzeJob, matchResume } from '../resume/keywords.js';
-import { RESUME_FONTS } from '../resume/templates.js';
+import { RESUME_FONTS, fontFamily } from '../resume/templates.js';
 
 export const TONES = [
   ['professional', 'Professional'],
@@ -173,13 +173,14 @@ export function letterHtml(letter, facts, { forPrint = false } = {}) {
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${font.gf}&display=swap">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#d9d9d9;font-family:${font.css},'Helvetica Neue',Arial,sans-serif;color:#111;-webkit-font-smoothing:antialiased}
+body{background:#d9d9d9;font-family:${fontFamily(font)};color:#111;-webkit-font-smoothing:antialiased}
 .page{width:${paper.w};min-height:${paper.h};margin:22px auto;background:#fff;padding:0.9in 0.95in;box-shadow:0 12px 40px rgba(0,0,0,.28);font-size:11.5pt;line-height:1.6}
 .meta{margin-bottom:26px;color:#333}.meta div+div{margin-top:2px}.date{margin-bottom:18px}
 .greeting{margin-bottom:14px}p{margin-bottom:13px;text-align:left}.sign{margin-top:22px}.sign b{display:block;margin-top:4px;font-weight:600}
 ${CSS}
-@page{size:${paper.size};margin:0.8in}
-@media print{body{background:none}.page{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}}
+/* no page margin, so the browser has nowhere to print its date / title / URL headers */
+@page{size:${paper.size};margin:0}
+@media print{body{background:none}.page{width:auto;min-height:0;margin:0;padding:0.8in;box-shadow:none;-webkit-box-decoration-break:clone;box-decoration-break:clone}}
 </style></head><body><div class="page">
 <header><h1>${esc(facts.name || 'Your Name')}</h1>${design === 'modern' && letter.role ? `<div class="title">${esc(letter.role)}</div>` : ''}<div class="contact">${contact.map((c) => `<span>${esc(c)}</span>`).join('')}</div></header>
 <div class="meta"><div class="date">${esc(date)}</div>${recipient.map((r) => `<div>${esc(r)}</div>`).join('')}</div>

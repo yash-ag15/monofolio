@@ -5,15 +5,18 @@ import { lines } from './model.js';
 
 export const RESUME_FONTS = {
   lato: { label: 'Lato', css: "'Lato'", gf: 'Lato:ital,wght@0,400;0,700;0,900;1,400' },
-  serif: { label: 'Source Serif', css: "'Source Serif 4'", gf: 'Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400' },
-  times: { label: 'Times (Tinos)', css: "'Tinos'", gf: 'Tinos:ital,wght@0,400;0,700;1,400' },
-  garamond: { label: 'EB Garamond', css: "'EB Garamond'", gf: 'EB+Garamond:ital,wght@0,400;0,600;0,700;1,400' },
+  serif: { label: 'Source Serif', css: "'Source Serif 4'", serif: true, gf: 'Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400' },
+  times: { label: 'Times (Tinos)', css: "'Tinos'", serif: true, gf: 'Tinos:ital,wght@0,400;0,700;1,400' },
+  garamond: { label: 'EB Garamond', css: "'EB Garamond'", serif: true, gf: 'EB+Garamond:ital,wght@0,400;0,600;0,700;1,400' },
   calibri: { label: 'Calibri-like (Carlito)', css: "'Carlito'", gf: 'Carlito:ital,wght@0,400;0,700;1,400' },
   sourcesans: { label: 'Source Sans', css: "'Source Sans 3'", gf: 'Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400' },
   roboto: { label: 'Roboto', css: "'Roboto'", gf: 'Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400' },
   inter: { label: 'Inter', css: "'Inter'", gf: 'Inter:wght@400;500;600;700' },
-  cmu: { label: 'Computer Modern (LaTeX)', css: "'CMU Serif'", face: 'cmu-serif' },
+  cmu: { label: 'Computer Modern (LaTeX)', css: "'CMU Serif'", serif: true, face: 'cmu-serif' },
 };
+
+// the font plus a fallback of the same kind, so a serif résumé never drops to Arial while the font loads
+export const fontFamily = (font) => `${font.css},${font.serif ? "Georgia,'Times New Roman',serif" : "'Helvetica Neue',Arial,sans-serif"}`;
 
 // fonts not on Google Fonts — the real LaTeX font, from the computer-modern npm package
 const CMU = 'https://cdn.jsdelivr.net/npm/computer-modern@0.1.3/fonts';
@@ -275,7 +278,7 @@ export function renderResumeHtml(resume, { forPrint = false } = {}) {
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 ${font.face ? `<style>${FONT_FACES[font.face]}</style>` : `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${font.gf}&display=swap">`}
 <style>
-:root{--font:${font.css},'Helvetica Neue',Arial,sans-serif;--fs:${Number(s.fontSize) || 10.5}pt;--sp:${sp};--m:${margin};--pw:${paper.w};--ph:${paper.h};--accent:${/^#[0-9a-f]{6}$/i.test(s.accent || '') ? s.accent : '#1f4e79'}}
+:root{--font:${fontFamily(font)};--fs:${Number(s.fontSize) || 10.5}pt;--sp:${sp};--m:${margin};--fill:${Math.max(0, Number(s.fill) || 0)}px;--pw:${paper.w};--ph:${paper.h};--accent:${/^#[0-9a-f]{6}$/i.test(s.accent || '') ? s.accent : '#1f4e79'}}
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{background:#d9d9d9;font-family:var(--font);color:#111;font-size:var(--fs);line-height:1.27;-webkit-font-smoothing:antialiased}
@@ -285,7 +288,7 @@ a{color:inherit;text-decoration:none}
 .ic svg{width:100%;height:100%;display:block}
 .row{display:flex;justify-content:space-between;gap:14px;align-items:baseline}
 .row > :last-child:not(:first-child){text-align:right;white-space:nowrap;flex:none}
-.sec{margin-top:calc(9px * var(--sp))}
+.sec{margin-top:calc(9px * var(--sp) + var(--fill))}
 .entry{margin-top:calc(5px * var(--sp))}
 .entry:first-child{margin-top:calc(2px * var(--sp))}
 .t{font-size:1.03em}
@@ -300,8 +303,9 @@ ul.flat{margin-top:0}
 .pb{position:absolute;left:-12px;right:-12px;border-top:1.5px dashed #9a9a9a;pointer-events:none}
 .pb span{position:absolute;right:0;top:2px;background:#111;color:#fff;font:600 10px Arial,sans-serif;padding:2px 6px;border-radius:3px}
 ${TEMPLATE_CSS[t]}
-@page{size:${paper.size};margin:${margin}}
-@media print{body{background:none}.page{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}.pb{display:none}.entry,li{break-inside:avoid}h2{break-after:avoid}}
+/* no page margin, so the browser has nowhere to print its date / title / URL headers; the margin lives on .page and repeats on every page */
+@page{size:${paper.size};margin:0}
+@media print{body{background:none}.page{width:auto;min-height:0;margin:0;padding:var(--m);box-shadow:none;-webkit-box-decoration-break:clone;box-decoration-break:clone}.pb{display:none}.entry,li{break-inside:avoid}h2{break-after:avoid}}
 </style></head>
 <body><div class="page" id="page">
 <header><h1>${nameHtml}</h1>${contact ? `<div class="contact">${contact}</div>` : ''}</header>

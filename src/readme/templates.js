@@ -128,14 +128,17 @@ const skillIcons = (techs, perline = 12, theme = 'dark') => {
 };
 const iconTheme = (o) => (['default', 'transparent', 'highcontrast'].includes(o.theme) ? 'light' : 'dark');
 
+// hosts of the stats / trophy / graph images above — the in-app preview loads these through /api/card (see server/card-proxy.js)
+export const CARD_HOSTS = ['github-readme-stats.vercel.app', 'github-trophies.vercel.app', 'github-activity-graph.vercel.app', 'streak-stats.demolab.com', 'readme-typing-svg.demolab.com', 'komarev.com'];
 const STREAK = { default: 'default', dark: 'dark', github_dark: 'github-dark-blue', transparent: 'transparent', tokyonight: 'tokyonight', radical: 'radical', dracula: 'dracula', gruvbox: 'gruvbox', nord: 'nord', onedark: 'onedark', highcontrast: 'highcontrast' };
+// the original github-profile-trophy and github-readme-activity-graph deployments are disabled (HTTP 402) — these are live mirrors of the same projects
 const TROPHY = { default: 'flat', dark: 'darkhub', github_dark: 'darkhub', transparent: 'flat', tokyonight: 'tokyonight', radical: 'radical', dracula: 'dracula', gruvbox: 'gruvbox', nord: 'nord', onedark: 'onedark', highcontrast: 'flat' };
 const ACTIVITY = { default: 'minimal', dark: 'github-compact', github_dark: 'github-compact', transparent: 'minimal', tokyonight: 'tokyo-night', radical: 'redical', dracula: 'dracula', gruvbox: 'gruvbox', nord: 'nord', onedark: 'one-dark', highcontrast: 'high-contrast' };
 const statsUrl = (u, o) => `https://github-readme-stats.vercel.app/api?username=${u}&show_icons=true&theme=${o.theme}&hide_border=true&rank_icon=github`;
 const langsUrl = (u, o) => `https://github-readme-stats.vercel.app/api/top-langs/?username=${u}&layout=compact&theme=${o.theme}&hide_border=true&langs_count=8`;
 const streakUrl = (u, o) => `https://streak-stats.demolab.com?user=${u}&theme=${STREAK[o.theme] || 'default'}&hide_border=true`;
-const trophyUrl = (u, o) => `https://github-profile-trophy.vercel.app/?username=${u}&theme=${TROPHY[o.theme] || 'flat'}&no-frame=true&no-bg=true&margin-w=4&row=1&column=7`;
-const activityUrl = (u, o) => `https://github-readme-activity-graph.vercel.app/graph?username=${u}&theme=${ACTIVITY[o.theme] || 'minimal'}&hide_border=true`;
+const trophyUrl = (u, o) => `https://github-trophies.vercel.app/?username=${u}&theme=${TROPHY[o.theme] || 'flat'}&no-frame=true&no-bg=true&margin-w=4&row=1&column=7`;
+const activityUrl = (u, o) => `https://github-activity-graph.vercel.app/graph?username=${u}&theme=${ACTIVITY[o.theme] || 'minimal'}&hide_border=true`;
 const visitorsUrl = (u, o) => `https://komarev.com/ghpvc/?username=${u}&label=Profile%20views&color=${o.badges === 'mono' ? '111111' : o.accent}&style=flat`;
 const pinUrl = (owner, repo, o) => `https://github-readme-stats.vercel.app/api/pin/?username=${owner}&repo=${repo}&theme=${o.theme}&hide_border=true`;
 const typingUrl = (lines, o, opts = {}) =>
