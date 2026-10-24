@@ -15,6 +15,7 @@ import { useAutoSync } from '../lib/github.js';
 import { NAV } from './nav.js';
 import { useAccount, useSyncStatus } from '../lib/account.jsx';
 import { requestGuestSync, useGuestStatus } from '../lib/guest.js';
+import { setPersonInfo } from '../lib/analytics.js';
 import { LogoMark } from '../components/Logo.jsx';
 
 const SYNC_TEXT = { saved: 'Saved', saving: 'Saving…', offline: 'Offline', 'too-large': 'Not saved' };
@@ -77,6 +78,13 @@ export default function App() {
   const { user, signOut } = useAccount();
   const sync = useSyncStatus();
   const guestSync = useGuestStatus();
+  // analytics keep only the person's name and college (see lib/analytics.js); sent once typing settles
+  const personName = state.profile.basics.name;
+  const college = (state.profile.education || []).find((e) => (e.school || '').trim())?.school;
+  useEffect(() => {
+    const t = setTimeout(() => setPersonInfo({ name: personName, college }), 2000);
+    return () => clearTimeout(t);
+  }, [personName, college]);
   useAutoSync();
 
   const current = ALL.find((i) => i.id === route) || ALL[0];
