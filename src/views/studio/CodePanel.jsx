@@ -85,7 +85,7 @@ export default function CodePanel({ generated, code, designFp, dispatch, toast, 
   if (!started) {
     return (
       <div className="panel-body">
-        {aiOn && (
+        {aiOn !== null && (
           <div className="ai-hero">
             <div className="ai-hero-head">
               <h3>Create or change your portfolio with AI</h3>

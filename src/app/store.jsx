@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useReducer, useRef } from 'react';
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef } from 'react';
 import { THEMES } from '../portfolio/themes.js';
+import { track } from '../lib/analytics.js';
 import { emptyProfile, sampleProfile } from '../portfolio/sample.js';
 
 export { emptyProfile, sampleProfile };
@@ -317,7 +318,12 @@ const StoreContext = createContext(null);
 
 // initial: the signed-in user's saved state; onSave(state) is called (debounced) after every change.
 export function StoreProvider({ children, initial, onSave }) {
-  const [state, dispatch] = useReducer(reducer, initial, hydrate);
+  const [state, rawDispatch] = useReducer(reducer, initial, hydrate);
+  // key moments (resume exported, portfolio downloaded…) also go to analytics — every time, not just the first
+  const dispatch = useCallback((action) => {
+    if (action.type === 'milestone') track(action.key);
+    rawDispatch(action);
+  }, []);
   const loaded = useRef(state);
 
   useEffect(() => {

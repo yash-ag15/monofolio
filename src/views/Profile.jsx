@@ -4,6 +4,7 @@ import { Icon, ListEditor, Switch, Text, useToast } from '../components/ui.jsx';
 import { initials } from '../portfolio/render.js';
 import { extractResumeLines, parseResumeLines } from '../resume/parse.js';
 import { importSummary, mergeProfile, profileFromResume } from '../profile/import.js';
+import { track } from '../lib/analytics.js';
 
 // Upload a resume and fill in the profile from it: a drop zone, then a review of what was found.
 function ResumeImport({ profile, onApply, onClose }) {
@@ -214,6 +215,7 @@ export default function Profile({ go }) {
     const { profile, changed, added } = mergeProfile(p, incoming, mode);
     dispatch({ type: 'profile/set', profile });
     setLastImport({ before: p, file });
+    track('resume_imported', { mode });
     setImportOpen(false);
     setTab('basics');
     const parts = [changed.length && `${changed.length} detail${changed.length === 1 ? '' : 's'}`, added && `${added} item${added === 1 ? '' : 's'}`].filter(Boolean);

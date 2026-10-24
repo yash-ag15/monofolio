@@ -205,7 +205,7 @@ export default function Cover({ go }) {
               <button className="btn" onClick={write} disabled={busy}>
                 <Icon name="sparkle" /> {busy ? 'Writing…' : letter.text ? (aiOn ? 'Rewrite with AI' : 'Rewrite from template') : aiOn ? 'Write with AI' : 'Write from template'}
               </button>
-              {aiOn && <AiBadge />}
+              <AiBadge />
               {aiOn && !busy && (
                 <button className="linklike small" onClick={() => update({ text: writeFromTemplate({ facts, jd: letter.jd, company, role, why: letter.why, length: letter.length }) })}>
                   or use the offline template

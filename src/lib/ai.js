@@ -1,9 +1,56 @@
-// AI client (Groq or xAI Grok, chosen on the server). Calls our own server at /api/ai/*, which holds the site owner's API key
-// (see server/ai-proxy.js). Visitors never provide or see a key — they just send a prompt or image.
+// AI client. Two ways to reach a model:
+//   • the visitor's own API key (Claude, OpenAI, Gemini, Grok, Groq, OpenRouter) — called straight from their
+//     browser, see ai-providers.js; the key is kept in this browser only
+//   • signed in, no key of their own → our server at /api/ai/*, which holds the site owner's key (server/ai-proxy.js)
+import { PROVIDERS, ownKeyRequest } from './ai-providers.js';
+import { track } from './analytics.js';
 
-let status = null; // { enabled, model } once known
+const KEY_STORE = 'monofolio:ai-key';
+let server = null; // { enabled, model } from /api/ai/status
 let pending = null;
+let signedIn = false;
+let status = null; // { enabled, source: 'own' | 'server' | null, model, provider, serverEnabled, signedIn }
 const listeners = new Set();
+
+/** The visitor's own key: { provider, key, model } or null. */
+export function getOwnKey() {
+  try {
+    const k = JSON.parse(localStorage.getItem(KEY_STORE) || 'null');
+    return k?.key && PROVIDERS[k.provider] ? k : null;
+  } catch {
+    return null;
+  }
+}
+export function setOwnKey(k) {
+  try {
+    if (k) localStorage.setItem(KEY_STORE, JSON.stringify({ provider: k.provider, key: k.key.trim(), model: k.model }));
+    else localStorage.removeItem(KEY_STORE);
+  } catch {
+    /* storage blocked — the key only lasts this visit */
+  }
+  update();
+}
+
+function update() {
+  const own = getOwnKey();
+  const viaServer = !!server?.enabled && signedIn;
+  status = {
+    enabled: !!own || viaServer,
+    source: own ? 'own' : viaServer ? 'server' : null,
+    model: own ? own.model : server?.model || '',
+    provider: own?.provider || '',
+    serverEnabled: !!server?.enabled,
+    signedIn,
+  };
+  listeners.forEach((fn) => fn(status));
+  return status;
+}
+
+/** Root tells us whether someone is signed in (our server's AI is for signed-in users only). */
+export function setAiSignedIn(v) {
+  signedIn = !!v;
+  if (server) update();
+}
 
 export function loadAiStatus() {
   if (status) return Promise.resolve(status);
@@ -12,10 +59,9 @@ export function loadAiStatus() {
       .then((r) => (r.ok ? r.json() : { enabled: false }))
       .catch(() => ({ enabled: false }))
       .then((s) => {
-        status = { enabled: !!s.enabled, model: s.model || '' };
-        if (!status.enabled && process.env.NODE_ENV !== 'production') console.info(`[ai] off — ${AI_SETUP_HINT}`);
-        listeners.forEach((fn) => fn(status));
-        return status;
+        server = { enabled: !!s.enabled, model: s.model || '' };
+        if (!server.enabled && process.env.NODE_ENV !== 'production') console.info(`[ai] site key off — ${AI_SETUP_HINT}`);
+        return update();
       });
   return pending;
 }
@@ -24,6 +70,7 @@ export const onAiStatus = (fn) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
 };
+const noAi = () => new Error(signedIn ? 'Add your own AI key in AI settings to use this.' : 'Add your own AI key in AI settings, or sign in, to use AI.');
 
 // shown to the site owner only (dev builds)
 export const AI_SETUP_HINT = 'Add XAI_API_KEY=your-key to .env.local in the project folder and restart npm run dev.';
@@ -55,6 +102,13 @@ export function extractJson(text) {
  * @param {{system: string, user: string, images?: string[], temperature?: number, signal?: AbortSignal}} o
  */
 export async function aiJSON({ system, user, images = [], temperature = 0.6, maxTokens, signal }) {
+  const own = getOwnKey();
+  track('ai_used', own ? { via: 'own_key', provider: own.provider } : { via: 'site' });
+  if (own) {
+    const { text } = await ownKeyRequest(own, { system, user, images, temperature, maxTokens, json: true, signal });
+    return extractJson(text);
+  }
+  if (status && !status.enabled) throw noAi();
   const content = images.length ? [...images.map((url) => ({ type: 'image_url', image_url: { url, detail: 'high' } })), { type: 'text', text: user }] : user;
   let res;
   try {
@@ -79,6 +133,10 @@ export async function aiJSON({ system, user, images = [], temperature = 0.6, max
  * Resolves with the complete text.
  */
 export async function aiStream({ system, user, images = [], temperature = 0.7, maxTokens = 16000, onText, onWait, signal }) {
+  const own = getOwnKey();
+  track('ai_used', own ? { via: 'own_key', provider: own.provider } : { via: 'site' });
+  if (own) return ownKeyRequest(own, { system, user, images, temperature, maxTokens, onText, signal });
+  if (status && !status.enabled) throw noAi();
   const content = images.length ? [...images.map((url) => ({ type: 'image_url', image_url: { url, detail: 'high' } })), { type: 'text', text: user }] : user;
   let res;
   try {

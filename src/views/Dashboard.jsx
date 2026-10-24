@@ -122,7 +122,7 @@ export default function Dashboard({ go }) {
         <div className="dash-hello">
           <span className="dash-kicker">{greeting()}{firstName ? `, ${firstName}` : ''} 👋</span>
           <h1>{next ? 'Let’s get you job-ready.' : 'You’re all set. Go apply!'}</h1>
-          <p>Build your portfolio, resume and cover letters from one profile. Everything is saved to your account.</p>
+          <p>Build your portfolio, resume and cover letters from one profile. {user ? 'Everything is saved to your account.' : 'Everything is saved in this browser — sign in any time to keep it on every device.'}</p>
           <div className="dash-progress">
             <div className="dash-progress-top">
               <b>{doneCount} of {steps.length} steps done</b>

@@ -1,41 +1,213 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon, Seg } from './ui.jsx';
-import { aiStatus, loadAiStatus, onAiStatus } from '../lib/ai.js';
+import { aiStatus, getOwnKey, loadAiStatus, onAiStatus, setOwnKey } from '../lib/ai.js';
+import { PROVIDERS, detectProvider, listModels, pickModel } from '../lib/ai-providers.js';
 import { cancelBuild, clearBuild, getBuild, startBuild, subscribeBuild } from '../lib/ai-builder.js';
 import { aiReview } from '../resume/ai-review.js';
 import { analyzeImage, readImageFile, readImageUrl } from '../lib/image-traits.js';
 
-// null while checking, then true / false — the server decides (it holds the owner's key)
-export function useAiOn() {
-  const [on, setOn] = useState(() => aiStatus()?.enabled ?? null);
+// null while checking, then the status from lib/ai.js: { enabled, source: 'own' | 'server' | null, provider, model, … }
+export function useAiStatus() {
+  const [s, setS] = useState(() => aiStatus());
   useEffect(() => {
-    loadAiStatus().then((s) => setOn(s.enabled));
-    return onAiStatus((s) => setOn(s.enabled));
+    loadAiStatus().then(setS);
+    return onAiStatus(setS);
   }, []);
-  return on;
+  return s;
 }
+export const useAiOn = () => useAiStatus()?.enabled ?? null;
 
-export function AiBadge() {
-  const on = useAiOn();
-  if (on === null) return null;
-  return on ? (
-    <span className="ai-badge on" title="AI enabled">
-      <i /> AI
-    </span>
-  ) : (
-    <span className="ai-badge">AI unavailable</span>
+// Said next to every key field, so nobody wonders whether we keep their key.
+function KeyPrivacy() {
+  return (
+    <p className="ai-key-privacy">
+      <Icon name="check" size={14} />
+      <span>
+        <b>We don’t store your key.</b> It never reaches our servers — it stays only in this browser on your device, and AI requests go directly from your browser to the provider. Only you can access it, and <i>Remove key</i> deletes it.
+      </span>
+    </p>
   );
 }
 
-// What visitors see when AI is off. The setup steps are shown only to the site owner in dev mode.
+// Paste your own key (Claude, OpenAI, Gemini, Grok, Groq, OpenRouter): we check it, list its models, keep it in this browser.
+export function AiKeyForm({ onDone }) {
+  const saved = getOwnKey();
+  const [key, setKey] = useState('');
+  const [provider, setProvider] = useState('');
+  const [models, setModels] = useState(saved ? [saved.model] : []);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const chosen = provider || detectProvider(key);
+  const p = PROVIDERS[chosen];
+
+  const save = async () => {
+    const k = key.trim();
+    if (!chosen) return setError('Couldn’t tell which provider this key is for — choose it from the list.');
+    setBusy(true);
+    setError('');
+    try {
+      const ids = await listModels({ provider: chosen, key: k }); // also proves the key works
+      const model = pickModel(chosen, ids);
+      setModels(ids.length ? ids : [model]);
+      setOwnKey({ provider: chosen, key: k, model });
+      setKey('');
+      setProvider('');
+      onDone?.();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const loadModels = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      setModels(await listModels(saved));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (saved)
+    return (
+      <div className="ai-key">
+        <div className="ai-key-row">
+          <span className="ai-key-who">
+            <Icon name="check" size={15} /> Using your {PROVIDERS[saved.provider].name} key
+          </span>
+          <button type="button" className="btn ghost sm" onClick={() => (setOwnKey(null), setModels([]))}>
+            Remove key
+          </button>
+        </div>
+        <label className="ai-key-field">
+          <span>Model</span>
+          <select value={saved.model} onChange={(e) => setOwnKey({ ...saved, model: e.target.value })}>
+            {[...new Set([saved.model, ...models])].map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </label>
+        {models.length <= 1 && (
+          <button type="button" className="btn ghost sm" style={{ justifySelf: 'start' }} disabled={busy} onClick={loadModels}>
+            {busy ? 'Loading…' : 'Show all models for this key'}
+          </button>
+        )}
+        {error && <em className="pi-err">{error}</em>}
+        <KeyPrivacy />
+      </div>
+    );
+
+  return (
+    <form className="ai-key" onSubmit={(e) => (e.preventDefault(), save())}>
+      <div className="ai-key-row">
+        <input
+          type="password"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={p ? `Paste your ${p.name} key (${p.keyHint})` : 'Paste an API key — Claude, OpenAI, Gemini, Grok, Groq or OpenRouter'}
+          value={key}
+          onChange={(e) => (setKey(e.target.value), setError(''))}
+          aria-label="API key"
+        />
+        <select value={chosen} onChange={(e) => setProvider(e.target.value)} aria-label="Provider">
+          <option value="">Provider…</option>
+          {Object.entries(PROVIDERS).map(([id, x]) => (
+            <option key={id} value={id}>
+              {x.name}
+            </option>
+          ))}
+        </select>
+        <button className="btn sm" disabled={busy || !key.trim()}>
+          {busy ? 'Checking…' : 'Save key'}
+        </button>
+      </div>
+      {error && <em className="pi-err">{error}</em>}
+      <KeyPrivacy />
+      <span className="hint">
+        Usage is billed to your own account with the provider.
+        {p && (
+          <>
+            {' '}
+            <a href={p.keysUrl} target="_blank" rel="noreferrer">
+              Get a {p.name} key
+            </a>
+          </>
+        )}
+      </span>
+    </form>
+  );
+}
+
+function AiKeyDialog({ onClose }) {
+  const s = useAiStatus();
+  useEffect(() => {
+    const esc = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [onClose]);
+  return (
+    <div className="ai-dialog" role="dialog" aria-modal="true" aria-label="AI settings" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="ai-dialog-card card card-pad stack">
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <b>AI settings</b>
+          <button className="btn ghost icon" aria-label="Close" onClick={onClose}>
+            <Icon name="x" />
+          </button>
+        </div>
+        {s?.source === 'server' && (
+          <p className="hint">
+            You’re using Monofolio’s built-in AI, which has a daily limit. Add your own key to use the model you like with no limit from us — you can switch back any time with <i>Remove key</i>.
+          </p>
+        )}
+        {s && !s.enabled && <p className="hint">Add a key to turn on the AI features: portfolio builder, resume review, tailoring and cover letters.</p>}
+        <AiKeyForm onDone={onClose} />
+      </div>
+    </div>
+  );
+}
+
+// Shows where AI comes from; click to add, change or remove your own key.
+export function AiBadge() {
+  const s = useAiStatus();
+  const [open, setOpen] = useState(false);
+  if (!s) return null;
+  const label = s.source === 'own' ? `AI · ${PROVIDERS[s.provider].name.replace(/ \(.*\)$/, '')}` : s.enabled ? 'AI · Built-in' : 'Add AI key';
+  return (
+    <>
+      <button type="button" className={`ai-badge ${s.enabled ? 'on' : ''}`} title={s.enabled ? `AI settings — model: ${s.model}` : 'Use AI with your own API key'} onClick={() => setOpen(true)}>
+        {s.enabled && <i />} {label}
+      </button>
+      {s.source === 'server' && (
+        <button type="button" className="linklike small ai-own-link" onClick={() => setOpen(true)}>
+          Use your own key
+        </button>
+      )}
+      {open && <AiKeyDialog onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+// What visitors see when AI is off: add their own key, or sign in to use the site's.
 export function AiSetup() {
+  const s = useAiStatus();
   return (
     <div className="ai-setup">
-      <b>AI features are unavailable right now</b>
-      <p>Everything else still works — the offline tools on this page don’t need AI.</p>
-      {process.env.NODE_ENV !== 'production' && (
+      <b>Use AI with your own API key</b>
+      <p>Paste a key from Claude, OpenAI, Gemini, Grok, Groq or OpenRouter. Everything else on this page works without AI.</p>
+      <AiKeyForm />
+      {s?.serverEnabled && !s.signedIn && (
         <p>
-          <i>Owner setup (only shown in dev):</i> add <code>XAI_API_KEY=your-key</code> to <code>.env.local</code> and restart <code>npm run dev</code>. For the live site run <code>npm start</code> with the same variable. Users never enter a key.
+          No key? <a href="#/signin">Sign in</a> to use Monofolio’s built-in AI (with a daily limit).
+        </p>
+      )}
+      {process.env.NODE_ENV !== 'production' && !s?.serverEnabled && (
+        <p>
+          <i>Owner setup (only shown in dev):</i> add <code>AI_API_KEY=your-key</code> to <code>.env.local</code> and restart <code>npm run dev</code> to give signed-in users the site’s own AI.
         </p>
       )}
     </div>

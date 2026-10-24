@@ -5,7 +5,7 @@ import { renderResumeHtml } from '../resume/templates.js';
 import { analyzeJob, matchResume } from '../resume/keywords.js';
 import { applyTailoring, tailorPlan } from '../resume/tailor.js';
 import { KeywordGroups, ScoreRing, loadJd, saveJd } from './Ats.jsx';
-import { AiBadge, useAiOn } from '../components/Ai.jsx';
+import { AiBadge, AiSetup, useAiOn } from '../components/Ai.jsx';
 import { aiTailor } from '../resume/ai-tailor.js';
 
 const SAMPLE_JD = `Software Engineer Intern – Full Stack
@@ -216,6 +216,7 @@ export default function Tailor({ go }) {
                     }}
                   />
                 )}
+                {aiOn === false && <AiSetup />}
 
                 <div className="stack-sm">
                   <div className="lbl-sm">Keywords — click a missing skill you really have to add it</div>

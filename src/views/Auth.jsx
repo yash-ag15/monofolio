@@ -192,6 +192,9 @@ export default function Auth({ onSignedIn }) {
           </form>
 
           <p className="au-note">Your profile and work are private to your account.</p>
+          <p className="au-note">
+            <a href="#/dashboard">Continue without an account</a> — your work is saved in this browser.
+          </p>
         </div>
       </main>
     </div>

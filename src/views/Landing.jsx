@@ -623,7 +623,8 @@ function Reveal({ children, className = '', as: Tag = 'section', ...rest }) {
   );
 }
 
-export default function Landing() {
+// onStart opens the app straight away — no account needed (work is saved in the browser until they sign in)
+export default function Landing({ onStart }) {
   const go = (r) => (window.location.hash = `/${r}`);
   const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   const top = () => document.querySelector('.lp')?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -645,8 +646,8 @@ export default function Landing() {
           <button className="btn ghost sm" onClick={() => go('signin')}>
             Sign in
           </button>
-          <button className="btn sm" onClick={() => go('signup')}>
-            Get started
+          <button className="btn sm" onClick={onStart}>
+            Try it — no sign-up
           </button>
         </div>
       </header>
@@ -666,14 +667,14 @@ export default function Landing() {
             Monofolio turns one profile into your <b>portfolio website</b>, an <b>ATS-ready resume</b>, <b>cover letters</b>, a <b>GitHub README</b> and a shareable <b>dev card</b> — with AI that builds the look you describe.
           </p>
           <div className="lp-hero-cta">
-            <button className="btn lp-big" onClick={() => go('signup')}>
-              Start for free <Icon name="chevron" />
+            <button className="btn lp-big" onClick={onStart}>
+              Start building — no sign-up <Icon name="chevron" />
             </button>
             <button className="btn secondary lp-big" onClick={() => jump('how')}>
               See how it works
             </button>
           </div>
-          <p className="lp-fine">Free · No credit card · Sign in with Google or email</p>
+          <p className="lp-fine">Free · No sign-up needed · Sign in any time to sync across devices</p>
         </div>
         <figure className="lp-hero-fig">
           <HeroStage />
@@ -805,13 +806,13 @@ export default function Landing() {
       {/* ---------- final CTA ---------- */}
       <Reveal className="lp-final">
         <h2>Your portfolio is ten minutes away.</h2>
-        <p>Free for students. Sign up with Google or email and start with a blank profile.</p>
+        <p>Free, and no sign-up needed — start now, and sign in whenever you want your work on every device.</p>
         <div className="lp-hero-cta">
-          <button className="btn lp-big" onClick={() => go('signup')}>
-            Create your account <Icon name="chevron" />
+          <button className="btn lp-big" onClick={onStart}>
+            Start building <Icon name="chevron" />
           </button>
           <button className="btn secondary lp-big" onClick={() => go('signin')}>
-            I already have one
+            Sign in
           </button>
         </div>
       </Reveal>
