@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../app/store.jsx';
-import { Icon, ListEditor, Seg, Switch, Text, downloadFile, useToast } from '../components/ui.jsx';
+import { Icon, ListEditor, Seg, Switch, Text, downloadFile, printHtml, useToast } from '../components/ui.jsx';
 import { Pressable, Thumb } from '../components/Thumb.jsx';
 import { RESUME_SECTION_LABELS, demoResumeData, emptyResumeData, isBlankResume, newResume, resumeDataFromProfile } from '../resume/model.js';
 import { plainExamples, showExamples, withExamples } from '../resume/examples.js';
@@ -183,19 +183,7 @@ export default function Resume({ go }) {
   const printPdf = () => {
     if (needContent()) return;
     dispatch({ type: 'milestone', key: 'resumeExported' });
-    const f = document.createElement('iframe');
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-    document.body.appendChild(f);
-    f.onload = () => {
-      const go2 = () => {
-        f.contentWindow.focus();
-        f.contentWindow.print();
-        setTimeout(() => f.remove(), 2000);
-      };
-      if (f.contentDocument.fonts?.ready) f.contentDocument.fonts.ready.then(go2);
-      else setTimeout(go2, 500);
-    };
-    f.srcdoc = renderResumeHtml(resume, { forPrint: true });
+    printHtml(renderResumeHtml(resume, { forPrint: true }), `${slug(resume.data.header.name)}_Resume`);
     toast('In the print dialog choose “Save as PDF” — the text stays selectable for ATS');
   };
   const base = `${slug(d.header.name)}_Resume`;

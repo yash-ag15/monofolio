@@ -115,3 +115,53 @@ test('a first bullet that is a sentence with commas is not mistaken for a tech s
   assert.equal(data.projects[0].tech, '');
   assert.equal(data.projects[0].bullets, 'Designed schemas, wrote APIs and shipped dashboards');
 });
+
+// Lines as a PDF of an HTML/Word resume gives them: no bullet characters — bullets are drawn as graphics —
+// so bullet text is only recognisable by its indent (x) and where each line ends (right).
+const L = (text, x, right, size = 10) => ({ text, x, right, size, urls: [] });
+
+test('bullets without bullet characters are found by indentation; wrapped lines are joined', () => {
+  const { data } = parseResumeLines([
+    L('Riya Verma', 220, 380, 22),
+    L('riya@mail.com', 240, 360),
+    L('EXPERIENCE', 32, 110, 12),
+    L('Backend Developer Intern, Northwind Labs\tJun 2025 – Aug 2025', 41, 580),
+    L('Remote', 41, 72),
+    L('Built an order service in Go that handles payment retries and webhooks for every partner across', 54, 566),
+    L('Southeast Asia.', 54, 130),
+    L('Cut p95 latency by 40% by caching hot product lookups', 54, 360),
+    L('PROJECTS', 32, 100, 12),
+    L('Weather Dashboard | Vue, Flask\tView Project', 41, 580),
+    L('Designed a dashboard showing hourly forecasts for any city, with saved places kept in browser Local-', 54, 570),
+    L('Storage between visits.', 54, 160),
+    L('Added offline support.', 54, 170),
+  ]);
+  assert.deepEqual(data.experience.map((e) => [e.role, e.company, e.location]), [['Backend Developer Intern', 'Northwind Labs', 'Remote']]);
+  assert.deepEqual(data.experience[0].bullets.split('\n'), ['Built an order service in Go that handles payment retries and webhooks for every partner across Southeast Asia.', 'Cut p95 latency by 40% by caching hot product lookups']);
+  assert.deepEqual(data.projects.map((p) => [p.name, p.tech, p.bullets.split('\n').length]), [['Weather Dashboard', 'Vue, Flask', 2]]);
+});
+
+test('a bullet that ends mid-sentence near the margin is still a new bullet when the next line starts with an action verb', () => {
+  const { data } = parseResumeLines([
+    L('Ana Das', 220, 380, 22),
+    L('PROJECTS', 32, 100, 12),
+    L('Chat App | Node.js', 41, 580),
+    L('Implemented token-based authentication for the REST API and the realtime socket connection', 54, 575),
+    L('Developed group chats and read receipts', 54, 300),
+  ]);
+  assert.equal(data.projects[0].bullets.split('\n').length, 2);
+});
+
+test('dates with a day ("20 May 2025 – 20 Jul 2025") and a "Scholastic Achievements" heading are understood', () => {
+  const { data } = parse(`
+    Kabir Shah
+    kabir@mail.com
+    EXPERIENCE
+    Data Analyst Intern, Contoso    20 May 2025 – 20 Jul 2025
+    • Built dashboards
+    SCHOLASTIC ACHIEVEMENTS
+    • Ranked in the top 1% of a national science olympiad
+  `);
+  assert.deepEqual(data.experience.map((e) => [e.role, e.company, e.start, e.end]), [['Data Analyst Intern', 'Contoso', '20 May 2025', '20 Jul 2025']]);
+  assert.equal(data.achievements.length, 1);
+});

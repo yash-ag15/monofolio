@@ -3,6 +3,7 @@
 // layouts (Jake's, FAANGPath, Overleaf/Word templates) and reports what it found.
 
 import { emptyResumeData } from './model.js';
+import { ACTION_VERBS } from './ats.js';
 
 // ---------- 1. extract lines of text ----------
 
@@ -39,7 +40,8 @@ async function pdfLines(file) {
       });
       const size = Math.max(...r.items.map((i) => i.h));
       const urls = links.filter((l) => r.y >= l.y0 - 3 && r.y <= l.y1 + 3).sort((a, b) => a.x0 - b.x0).map((l) => l.url);
-      out.push({ text: text.replace(/\s+\t/g, '\t').replace(/\t\s+/g, '\t').trim(), urls, size });
+      // x / right: where the line starts and ends — tells indented bullet text and wrapped lines apart
+      out.push({ text: text.replace(/\s+\t/g, '\t').replace(/\t\s+/g, '\t').trim(), urls, size, x: r.items[0].x, right: end });
     });
   }
   return out;
@@ -69,11 +71,11 @@ const SECTION_ALIASES = {
   experience: ['experience', 'work experience', 'professional experience', 'employment', 'internships', 'internship', 'internship experience', 'work history', 'industry experience'],
   projects: ['projects', 'personal projects', 'academic projects', 'key projects', 'technical projects', 'selected projects'],
   skills: ['skills', 'technical skills', 'skills and interests', 'technologies', 'tech stack', 'core competencies', 'skills summary', 'technical proficiency'],
-  achievements: ['achievements', 'awards', 'honors', 'honours', 'accomplishments', 'achievements and awards', 'awards and achievements', 'honors and awards'],
+  achievements: ['achievements', 'awards', 'honors', 'honours', 'accomplishments', 'achievements and awards', 'awards and achievements', 'honors and awards', 'scholastic achievements', 'academic achievements', 'key achievements'],
   certifications: ['certifications', 'certificates', 'licenses and certifications', 'certifications and courses', 'courses'],
 };
 const MONTH = '(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?';
-const ONE_DATE = `(?:${MONTH}\\s*'?\\d{2,4}|\\d{1,2}\\/\\d{4}|(?:19|20)\\d{2})`;
+const ONE_DATE = `(?:(?:\\d{1,2}(?:st|nd|rd|th)?\\s+)?${MONTH},?\\s*'?\\d{2,4}|\\d{1,2}\\/\\d{4}|(?:19|20)\\d{2})`;
 const DATE_RE = new RegExp(`((?:expected\\s+)?${ONE_DATE})\\s*(?:-|–|—|to|until)\\s*(${ONE_DATE}|present|current|now|ongoing|till date)|(?:expected\\s+|graduating\\s+)?${ONE_DATE}`, 'i');
 const BULLET_RE = /^[•▪●◦■□➢►\-*–·]\s*/;
 
@@ -106,27 +108,56 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const LINK_LABEL = /^(preview|live|website|frontend|backend|repo|github|demo|link|source|code|view \w+)$/i; // "Name | Stack | Preview"
 const LINK_WORDS = /\b(view (project|post|certificate|credential|demo|live)|live demo|github|demo|link|source|code)\b\s*$/i;
 
-// A non-bullet line right after a bullet is that bullet wrapping onto the next line when it starts
-// lowercase, or when the line above ran to the margin mid-sentence ("…from the" → "OpenWeather API.").
-// Entry headers carry columns, pipes, links or dates, so those always start a new entry.
+// Does line `l` carry on the text of the line above (`prev`), rather than start a new point? Works with or
+// without bullet characters:
+//   carries on — starts lowercase, or the line above broke a word ("LocalStorage-"), or the line above ran to the
+//                right margin mid-sentence ("…via" → "Web Sockets (STOMP).")
+//   new point  — the line above finished a sentence, or this one starts with an action verb ("Developed …")
+// `maxRight` is the section's right margin when the PDF gives positions; otherwise a long line counts as full.
 const WRAP_WIDTH = 70;
 const looksLikeHead = (l) => /[|\t]|https?:/.test(l.text) || (l.urls || []).length > 0 || DATE_RE.test(l.text);
-const continuesBullet = (cur, l) => {
-  if (!cur || !cur.bullets.length || looksLikeHead(l)) return false;
-  return /^[a-z(]/.test(l.text) || (cur.lastLen >= WRAP_WIDTH && !/[.!?:]$/.test(cur.bullets[cur.bullets.length - 1]));
-};
+const startsWithVerb = (t) => ACTION_VERBS.has((t.match(/^[A-Za-z]+/) || [''])[0].toLowerCase());
+function wraps(prev, l, maxRight) {
+  if (!prev || looksLikeHead(l)) return false;
+  const p = prev.text.replace(BULLET_RE, '').trim();
+  if (/^[a-z(]/.test(l.text) || /\w-$/.test(p)) return true;
+  if (/[.!?:;]$/.test(p) || startsWithVerb(l.text)) return false;
+  if (prev.right == null || prev.x == null || !maxRight) return p.length >= WRAP_WIDTH;
+  // a line breaks where the next word no longer fits: would this line's first word have overflowed the margin?
+  const charW = (prev.right - prev.x) / Math.max(1, prev.text.length);
+  const nextWord = (l.text.match(/^\S+/) || [''])[0].length;
+  return prev.right + (nextWord + 1) * charW >= maxRight - charW;
+}
+const rightMargin = (lines) => Math.max(0, ...lines.map((l) => l.right || 0));
 
-// split a section's lines into entries: header lines followed by bullet lines
+// split a section's lines into entries: header lines followed by bullet lines.
+// Bullets are lines starting with a bullet character — or, in PDFs that draw the bullets as graphics (HTML,
+// Word and Docs lists), the lines indented further than the entry headers.
 function entries(lines) {
   const out = [];
   let cur = null;
+  const glyphs = lines.some((l) => BULLET_RE.test(l.text));
+  const xs = lines.map((l) => l.x).filter((x) => x != null);
+  const minX = xs.length ? Math.min(...xs) : 0;
+  const INDENT = 6; // pt
+  const indented = !glyphs && lines.some((l) => l.x - minX > INDENT);
+  const isBody = (l) => indented && l.x - minX > INDENT && !looksLikeHead(l);
+  const maxRight = rightMargin(lines.filter((l) => !looksLikeHead(l)));
+  const addBullet = (text, l) => {
+    if (!cur) {
+      cur = { head: [], bullets: [], urls: [] };
+      out.push(cur);
+    }
+    cur.bullets.push(text);
+    cur.last = l;
+  };
+  const extend = (l) => {
+    cur.bullets[cur.bullets.length - 1] += ' ' + l.text; // wrapped bullet continues
+    cur.last = l;
+  };
   lines.forEach((l) => {
-    const isBullet = BULLET_RE.test(l.text);
-    if (isBullet) {
-      if (!cur) cur = { head: [], bullets: [], urls: [] };
-      cur.bullets.push(l.text.replace(BULLET_RE, '').trim());
-      cur.lastLen = l.text.length;
-    } else if (cur && cur.bullets.length && !cur.bullets[cur.bullets.length - 1]) {
+    if (BULLET_RE.test(l.text)) addBullet(l.text.replace(BULLET_RE, '').trim(), l);
+    else if (cur && cur.bullets.length && !cur.bullets[cur.bullets.length - 1]) {
       // some PDFs put the bullet glyph on its own baseline — its text is the next line,
       // unless that line is part of the entry's header (a decorative "•" before "Bachelor of Science …  2020 – 2024")
       if (cur.bullets.length === 1 && looksLikeHead(l)) {
@@ -135,12 +166,11 @@ function entries(lines) {
         cur.urls.push(...(l.urls || []));
       } else {
         cur.bullets[cur.bullets.length - 1] = l.text;
-        cur.lastLen = l.text.length;
+        cur.last = l;
       }
-    } else if (continuesBullet(cur, l)) {
-      cur.bullets[cur.bullets.length - 1] += ' ' + l.text; // wrapped bullet continues
-      cur.lastLen = l.text.length;
-    } else {
+    } else if (cur && cur.bullets.length && (isBody(l) || (!indented && glyphs)) && wraps(cur.last, l, maxRight)) extend(l);
+    else if (isBody(l)) addBullet(l.text, l);
+    else {
       if (!cur || cur.bullets.length) {
         cur = { head: [], bullets: [], urls: [] };
         out.push(cur);
@@ -149,8 +179,22 @@ function entries(lines) {
       cur.urls.push(...(l.urls || []));
     }
   });
-  if (cur && !out.includes(cur)) out.push(cur);
   out.forEach((e) => (e.bullets = e.bullets.filter(Boolean)));
+  return out;
+}
+
+// one line per item for list sections (achievements, certifications, custom): wrapped lines are joined back on
+function joinWrapped(lines) {
+  const glyphs = lines.some((l) => BULLET_RE.test(l.text));
+  const maxRight = rightMargin(lines.filter((l) => !looksLikeHead(l)));
+  const out = [];
+  lines.forEach((l) => {
+    const prev = out[out.length - 1];
+    // compare with the item's last physical line, not the joined text
+    const carries = prev && !BULLET_RE.test(l.text) && (!glyphs || BULLET_RE.test(prev.text)) && wraps(prev.last, l, maxRight);
+    if (carries) out[out.length - 1] = { ...prev, text: `${prev.text} ${l.text}`, last: l, urls: [...(prev.urls || []), ...(l.urls || [])] };
+    else out.push({ ...l, last: l });
+  });
   return out;
 }
 
@@ -163,7 +207,14 @@ function parseExperience(lines) {
     const second = (e.head[1] ? splitTab(findDates(e.head[1]).rest) : []) || [];
     let company = first;
     let role = second[0] || '';
-    const location = second[1] || (e.head[0] ? splitTab(findDates(e.head[0]).rest)[1] : '') || '';
+    let location = second[1] || (e.head[0] ? splitTab(findDates(e.head[0]).rest)[1] : '') || '';
+    // "Role, Company" on the first line and just a place on the second ("Remote", "Pune, India") — that line is the location
+    const pair = /^(.*?)(?:\s+(?:at|@)\s+|\s+[—–-]\s+|,\s+)(.+)$/.exec(first);
+    if (/\d/.test(location)) location = ''; // a leftover piece of a date, not a place
+    if (role && !location && pair && (ROLE_WORDS.test(pair[1]) || ROLE_WORDS.test(pair[2])) && !ROLE_WORDS.test(role) && role.split(/\s+/).length <= 4) {
+      location = role;
+      role = '';
+    }
     // "Role at Company" / "Role, Company" on a single line
     if (!role) {
       const at = company.match(/^(.*?)\s+(?:at|@)\s+(.+)$/);
@@ -188,7 +239,7 @@ function parseEducation(lines) {
     const degreeLine = h1[0] || '';
     return {
       school: h0[0] || '',
-      degree: degreeLine.replace(scoreM ? scoreM[0] : '§', '').replace(/\(\s*\)|\[\s*\]/g, '').replace(/[,;–-]\s*$/, '').trim(),
+      degree: degreeLine.replace(scoreM ? scoreM[0] : '§', '').replace(/\(\s*\)|\[\s*\]/g, '').replace(/[\s,;|·—–-]+$/, '').trim(),
       start: cap(start),
       end: cap(end),
       location: h0[1] && !/\d/.test(h0[1]) ? h0[1] : h1[1] && !/\d/.test(h1[1]) ? h1[1] : '',
@@ -237,7 +288,7 @@ function parseSkills(lines) {
 }
 
 const parseList = (lines) =>
-  lines
+  joinWrapped(lines)
     .map((l) => ({ text: l.text.replace(BULLET_RE, '').replace(/\t+/g, ' ').replace(LINK_WORDS, '').trim(), url: (l.urls || [])[0] || '' }))
     .filter((x) => x.text);
 
@@ -294,7 +345,7 @@ export function parseResumeLines(rawLines) {
     else if (s.key === 'achievements') data.achievements.push(...parseList(s.lines).map((x) => ({ text: x.text, link: x.url, linkLabel: x.url ? 'View' : '' })));
     else if (s.key === 'certifications') data.certifications.push(...parseList(s.lines).map((x) => ({ name: x.text, issuer: '', date: '', link: x.url })));
     else if (s.key === 'summary') data.summary = s.lines.map((l) => l.text.replace(/\t/g, ' ')).join(' ');
-    else data.custom.push({ title: s.title.replace(/\b\w/g, (c) => c.toUpperCase()), content: s.lines.map((l) => `- ${l.text.replace(BULLET_RE, '').replace(/\t+/g, ' — ')}`).join('\n') });
+    else data.custom.push({ title: s.title.replace(/\b\w/g, (c) => c.toUpperCase()), content: joinWrapped(s.lines).map((l) => `- ${l.text.replace(BULLET_RE, '').replace(/\t+/g, ' — ')}`).join('\n') });
     if (!found.includes(s.key)) found.push(s.key);
   });
 

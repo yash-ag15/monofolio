@@ -190,6 +190,34 @@ export function ToastProvider({ children }) {
 }
 export const useToast = () => useContext(ToastCtx);
 
+// Print a document (resume, cover letter) from a hidden frame so it can be saved as a PDF with selectable text.
+// Chrome names the saved PDF after the *page's* title, not the frame's — so the title is the file name while printing.
+export function printHtml(html, fileName) {
+  const f = document.createElement('iframe');
+  f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  document.body.appendChild(f);
+  f.onload = () => {
+    const go = () => {
+      const title = document.title;
+      let restored = false;
+      const restore = () => {
+        if (restored) return;
+        restored = true;
+        document.title = title;
+        setTimeout(() => f.remove(), 1000);
+      };
+      document.title = fileName;
+      f.contentWindow.addEventListener('afterprint', restore);
+      setTimeout(restore, 10 * 60 * 1000); // in case a browser never reports the dialog closing
+      f.contentWindow.focus();
+      f.contentWindow.print();
+    };
+    if (f.contentDocument.fonts?.ready) f.contentDocument.fonts.ready.then(go);
+    else setTimeout(go, 500);
+  };
+  f.srcdoc = html;
+}
+
 export function downloadFile(name, content, type = 'text/plain') {
   const blob = content instanceof Blob ? content : new Blob([content], { type });
   const url = URL.createObjectURL(blob);

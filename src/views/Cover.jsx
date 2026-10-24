@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../app/store.jsx';
-import { Icon, Seg, downloadFile, useToast } from '../components/ui.jsx';
+import { Icon, Seg, downloadFile, printHtml, useToast } from '../components/ui.jsx';
 import { AiBadge, useAiOn } from '../components/Ai.jsx';
 import { analyzeJob } from '../resume/keywords.js';
 import { LENGTHS, LETTER_DESIGNS, TONES, candidateFacts, letterHtml, letterText, writeFromTemplate, writeWithAi } from '../cover/letter.js';
@@ -107,19 +107,7 @@ export default function Cover({ go }) {
   };
   const printPdf = () => {
     dispatch({ type: 'milestone', key: 'coverMade' });
-    const f = document.createElement('iframe');
-    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-    document.body.appendChild(f);
-    f.onload = () => {
-      const go2 = () => {
-        f.contentWindow.focus();
-        f.contentWindow.print();
-        setTimeout(() => f.remove(), 2000);
-      };
-      if (f.contentDocument.fonts?.ready) f.contentDocument.fonts.ready.then(go2);
-      else setTimeout(go2, 500);
-    };
-    f.srcdoc = letterHtml(view, facts, { forPrint: true });
+    printHtml(letterHtml(view, facts, { forPrint: true }), base);
     toast('Choose “Save as PDF” in the print dialog');
   };
   const copy = async () => {
